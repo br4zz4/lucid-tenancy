@@ -63,6 +63,7 @@ module Lucid
           schemas << Template.schema if Template.exists?
           schemas.concat(Lucid::Tenancy.map { |tenant| tenant.schema_name }) if tenancy_model?
           schemas.each do |schema|
+            Schema.ensure_migration_tables(schema)
             Schema.with_path(schema) { yield context(paths, :tenant, pool), schema }
           end
         end

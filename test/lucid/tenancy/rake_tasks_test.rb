@@ -10,7 +10,7 @@ class RakeTasksTest < MigrationTenancyTest
     @path = Lucid::Tenancy.configuration.tenant_schema_path
     @rake = Rake::Application.new
     Rake.application = @rake
-    Rake::Task.define_task(:load_config)
+    Rake::Task.define_task("db:load_config")
     load RAKEFILE
     @pool = ActiveRecord::Base.connection_pool
     @original_paths = @pool.migration_context.instance_variable_get(:@migrations_paths)
@@ -69,7 +69,7 @@ class RakeTasksTest < MigrationTenancyTest
     prerequisites = @rake["db:migrate"].prerequisites
 
     # assert
-    assert_equal ["load_config"], prerequisites
+    assert_equal ["db:load_config"], prerequisites
   end
 
   def test_status_task_prints_pending_per_schema

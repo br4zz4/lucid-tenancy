@@ -26,6 +26,21 @@ module Lucid
         )
       end
 
+      # Makes sure +schema+ has its own +schema_migrations+ and +ar_internal_metadata+, so a
+      # migration is recorded in the schema it ran in and never in the shared one.
+      def ensure_migration_tables(schema)
+        quoted = connection.quote_schema_name(schema)
+        connection.execute("CREATE TABLE IF NOT EXISTS #{quoted}.schema_migrations (version character varying NOT NULL PRIMARY KEY)")
+        connection.execute(<<~SQL)
+          CREATE TABLE IF NOT EXISTS #{quoted}.ar_internal_metadata (
+            key character varying NOT NULL PRIMARY KEY,
+            value character varying,
+            created_at timestamp(6) without time zone NOT NULL,
+            updated_at timestamp(6) without time zone NOT NULL
+          )
+        SQL
+      end
+
       # Runs the block with +schema+ (then the shared schema) as search_path and restores the previous one.
       def with_path(schema)
         previous = connection.schema_search_path

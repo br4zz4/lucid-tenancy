@@ -3,7 +3,7 @@
 Add the gem and run the generator.
 
 ```ruby
-gem 'lucid-tenancy', github: 'br4zz4/lucid-tenancy', tag: 'v0.1.0'
+gem 'lucid-tenancy', github: 'br4zz4/lucid-tenancy', tag: 'v0.1.1'
 ```
 
 ```sh

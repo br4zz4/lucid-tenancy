@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.1
+
+- Migrations are recorded in the schema they ran in (each tenant and the template get their own `schema_migrations`); the rake tasks load the Rails config correctly.
+
+## 0.1.0
 
 - `Lucid::Tenancy.with(tenant:)`, `shared`, `set(tenant:)`, `current` and `current_scope`, backed by per-thread and per-fiber state and a `search_path` that is reset when a connection returns to the pool.
 - Enumerable over tenants: `each`, `map`, `find`, with `count`, `size` and `to_a` that do not switch schema.

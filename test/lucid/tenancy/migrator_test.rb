@@ -218,6 +218,89 @@ class MigratorTest < MigrationTenancyTest
     assert_equal({ "public" => [], "tt_template" => [], "alfa" => [] }, pending)
   end
 
+  def test_tenant_migration_is_applied_to_template_and_both_tenants_with_own_versions
+    # arrange
+    provision_all("alfa", "beta")
+    write_migration("20260101000001", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
+
+    # act
+    migrate
+
+    # assert
+    %w[tt_template alfa beta].each do |schema|
+      assert_includes columns(schema, "students"), "nickname", schema
+      assert_includes versions(schema), "20260101000001", schema
+    end
+    refute_includes versions("public"), "20260101000001"
+  end
+
+  def test_pending_is_up_to_date_then_lists_a_new_migration_in_all_three_schemas
+    # arrange
+    provision_all("alfa", "beta")
+    write_migration("20260101000001", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
+    migrate
+    up_to_date = migrator.pending(paths: [@migrations_dir])
+    write_migration("20260101000002", "add_age", mode: :tenant, body: ADD_AGE)
+
+    # act
+    pending = migrator.pending(paths: [@migrations_dir])
+
+    # assert
+    assert_equal({ "public" => [], "tt_template" => [], "alfa" => [], "beta" => [] }, up_to_date)
+    %w[tt_template alfa beta].each { |schema| assert_equal [20260101000002], pending[schema], schema }
+    assert_equal [], pending["public"]
+  end
+
+  def test_rollback_removes_the_column_and_the_version_in_all_three_schemas
+    # arrange
+    provision_all("alfa", "beta")
+    write_migration("20260101000001", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
+    migrate
+
+    # act
+    rollback(steps: 1)
+
+    # assert
+    %w[tt_template alfa beta].each do |schema|
+      refute_includes columns(schema, "students"), "nickname", schema
+      refute_includes versions(schema), "20260101000001", schema
+    end
+  end
+
+  def test_ensure_migration_tables_is_idempotent_and_keeps_existing_data
+    # arrange
+    provision_all("alfa")
+    connection.execute(%(INSERT INTO "alfa".schema_migrations (version) VALUES ('20250101000001')))
+    connection.execute(%(INSERT INTO "alfa".ar_internal_metadata (key, value, created_at, updated_at) VALUES ('k', 'v', now(), now())))
+
+    # act
+    before = versions("alfa")
+    2.times { Lucid::Tenancy::Schema.ensure_migration_tables("alfa") }
+
+    # assert
+    assert_includes before, "20250101000001"
+    assert_equal before, versions("alfa")
+    assert_equal ["v"], connection.select_values(%(SELECT value FROM "alfa".ar_internal_metadata WHERE key = 'k'))
+  end
+
+  def test_tenant_created_before_migration_tables_existed_is_repaired_without_losing_data
+    # arrange
+    provision_all("alfa", "beta")
+    connection.execute(%(INSERT INTO "alfa".students (name) VALUES ('Maria')))
+    connection.execute(%(DROP TABLE "alfa".schema_migrations))
+    connection.execute(%(DROP TABLE "alfa".ar_internal_metadata))
+    write_migration("20260101000001", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
+
+    # act
+    migrate
+
+    # assert
+    assert_includes columns("alfa", "students"), "nickname"
+    assert_includes versions("alfa"), "20260101000001"
+    assert_includes columns("beta", "students"), "nickname"
+    assert_equal ["Maria"], connection.select_values(%(SELECT name FROM "alfa".students))
+  end
+
   def test_migrate_restores_the_search_path
     # arrange
     provision_all("alfa")
