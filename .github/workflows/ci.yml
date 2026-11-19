@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            ruby: "3.2"
+          - os: ubuntu-latest
+            ruby: "3.4"
+          - os: macos-latest
+            ruby: "3.4"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ikalnytskyi/action-setup-postgres@v7
+        id: postgres
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - name: Run tests
+        run: bundle exec rake test
+        env:
+          DATABASE_URL: ${{ steps.postgres.outputs.connection-uri }}
