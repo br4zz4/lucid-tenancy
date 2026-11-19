@@ -15,6 +15,9 @@ require "lucid/tenancy/template"
 require "lucid/tenancy/tenant"
 require "lucid/tenancy/provisioner"
 require "lucid/tenancy/collection"
+require "lucid/tenancy/migration"
+require "lucid/tenancy/migrator"
+require "lucid/tenancy/schema_dump"
 
 module Lucid
   # Multi-tenancy on PostgreSQL: one schema per tenant, inside the same database.
@@ -163,7 +166,10 @@ end
 
 ActiveSupport.on_load(:active_record) do
   include Lucid::Tenancy::Model
+  ActiveRecord::Migration.include Lucid::Tenancy::Migration
 end
+
+require "lucid/tenancy/railtie" if defined?(Rails::Railtie)
 
 ActiveSupport.on_load(:active_record_postgresqladapter) do
   include Lucid::Tenancy::ConnectionExtension

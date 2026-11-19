@@ -35,6 +35,14 @@ module Lucid
       ensure
         connection.lucid_tenancy_apply(previous)
       end
+      # Like +with_path+ but without the shared schema, so a dump sees only +schema+.
+      def with_only_path(schema)
+        previous = connection.schema_search_path
+        connection.lucid_tenancy_apply(connection.quote_schema_name(schema))
+        yield
+      ensure
+        connection.lucid_tenancy_apply(previous)
+      end
     end
   end
 end
