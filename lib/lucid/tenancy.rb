@@ -17,6 +17,7 @@ require "lucid/tenancy/provisioner"
 require "lucid/tenancy/collection"
 require "lucid/tenancy/migration"
 require "lucid/tenancy/migrator"
+require "lucid/tenancy/shared_only_migrations"
 require "lucid/tenancy/schema_dump"
 require "lucid/tenancy/resolver"
 require "lucid/tenancy/middleware"
@@ -96,6 +97,15 @@ module Lucid
       # @raise [Error::AlreadyProvisioned] the schema already exists
       def provision(tenant)
         Provisioner.provision(tenant)
+      end
+
+      # Marks a tenant schema that has no version table as in sync with the template: creates its
+      # +schema_migrations+ with the template's versions, so those migrations are not run again.
+      # Check first that the schema really matches the template.
+      def baseline(tenant)
+        schema = tenant.respond_to?(:schema_name) ? tenant.schema_name : tenant.to_s
+        Schema.ensure_migration_tables(schema, seed_from: Template.schema)
+        schema
       end
 
       # @return [Boolean] whether the schema of +tenant+ exists

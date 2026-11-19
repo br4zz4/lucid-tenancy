@@ -210,12 +210,76 @@ class MiddlewareTest < TenancyTest
     assert_equal "|public", third.last
   end
 
+  def test_set_without_block_inside_a_shared_path_does_not_leak
+    # arrange
+    alfa = @acme
+    leaking = lambda do |_env|
+      Lucid::Tenancy.set(tenant: alfa)
+      [200, { "content-type" => "text/plain" }, [current_schema]]
+    end
+    app = Lucid::Tenancy::Middleware.new(leaking)
+
+    # act
+    response = get(app, "/health", "app.test")
+    status, body = read(response)
+    after_close = [Lucid::Tenancy.current, current_schema]
+    next_request = read(get(Lucid::Tenancy::Middleware.new(probe), "/", "app.test"))
+
+    # assert
+    assert_equal 200, status
+    assert_equal alfa.schema_name, body
+    assert_equal [nil, "public"], after_close
+    assert_equal "|public", next_request.last
+  end
+
+  def test_each_call_starts_without_tenant
+    # arrange
+    Lucid::Tenancy.set(tenant: @globex)
+    app = Lucid::Tenancy::Middleware.new(probe)
+
+    # act
+    bare = read(get(app, "/", "app.test"))
+    shared = read(get(app, "/health", "app.test"))
+
+    # assert
+    assert_equal "|public", bare.last
+    assert_equal "|public", shared.last
+  end
+
+  def test_exception_after_set_restores_shared
+    # arrange
+    acme = @acme
+    failing = lambda do |_env|
+      Lucid::Tenancy.set(tenant: acme)
+      raise ArgumentError, "boom"
+    end
+    app = Lucid::Tenancy::Middleware.new(failing)
+
+    # act
+    assert_raises(ArgumentError) { get(app, "/health", "app.test") }
+
+    # assert
+    assert_nil Lucid::Tenancy.current
+    assert_equal "public", current_schema
+  end
+
   def test_railtie_registers_the_middleware_initializer
     # arrange
     names = Lucid::Tenancy::Railtie.initializers.map(&:name)
 
     # act
     registered = names.include?("lucid_tenancy.middleware")
+
+    # assert
+    assert registered
+  end
+
+  def test_railtie_registers_the_shared_only_migrations_initializer
+    # arrange
+    names = Lucid::Tenancy::Railtie.initializers.map(&:name)
+
+    # act
+    registered = names.include?("lucid_tenancy.pending_check")
 
     # assert
     assert registered

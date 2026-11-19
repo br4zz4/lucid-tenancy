@@ -175,11 +175,12 @@ class MigratorTest < MigrationTenancyTest
     assert_equal ["keep me"], connection.select_values(%(SELECT body FROM "alfa".extra_notes))
   end
 
-  def test_migrate_works_for_a_tenant_with_few_tables
+  def test_migrate_works_for_a_tenant_with_few_tables_after_baseline
     # arrange
     tenant = create_tenant_schema("sparse")
     @klass.create!(subdomain: tenant.schema_name)
     connection.execute(%(INSERT INTO "#{tenant.schema_name}".students (name) VALUES ('Ana')))
+    Lucid::Tenancy.baseline(tenant)
     write_migration("20260101000001", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
 
     # act
@@ -187,7 +188,21 @@ class MigratorTest < MigrationTenancyTest
 
     # assert
     assert_includes columns(tenant.schema_name, "students"), "nickname"
+    assert_includes versions(tenant.schema_name), "20260101000001"
     assert_equal ["Ana"], connection.select_values(%(SELECT name FROM "#{tenant.schema_name}".students))
+  end
+
+  def test_migrate_raises_missing_migration_table_for_a_tenant_without_versions
+    # arrange
+    tenant = create_tenant_schema("sparse")
+    @klass.create!(subdomain: tenant.schema_name)
+    write_migration("20260101000001", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
+
+    # act
+    error = assert_raises(Lucid::Tenancy::Error::MissingMigrationTable) { migrate }
+
+    # assert
+    assert_match(/lucid:tenancy:baseline\[#{tenant.schema_name}\]/, error.message)
   end
 
   def test_pending_lists_versions_per_schema
@@ -283,12 +298,45 @@ class MigratorTest < MigrationTenancyTest
     assert_equal ["v"], connection.select_values(%(SELECT value FROM "alfa".ar_internal_metadata WHERE key = 'k'))
   end
 
-  def test_tenant_created_before_migration_tables_existed_is_repaired_without_losing_data
+  def test_tenant_without_migration_tables_fails_then_baseline_repairs_without_losing_data
     # arrange
     provision_all("alfa", "beta")
     connection.execute(%(INSERT INTO "alfa".students (name) VALUES ('Maria')))
     connection.execute(%(DROP TABLE "alfa".schema_migrations))
     connection.execute(%(DROP TABLE "alfa".ar_internal_metadata))
+
+    # act
+    error = assert_raises(Lucid::Tenancy::Error::MissingMigrationTable) { migrate }
+    Lucid::Tenancy.baseline("alfa")
+    write_migration("20260101000001", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
+    migrate
+
+    # assert
+    assert_match(/baseline\[alfa\]/, error.message)
+    assert_includes columns("alfa", "students"), "nickname"
+    assert_includes versions("alfa"), "20260101000001"
+    assert_includes columns("beta", "students"), "nickname"
+    assert_equal ["Maria"], connection.select_values(%(SELECT name FROM "alfa".students))
+  end
+
+  def test_baseline_seeds_the_template_versions_and_is_idempotent
+    # arrange
+    provision_all("alfa")
+    write_migration("20260101000001", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
+    migrate
+    connection.execute(%(DROP TABLE "alfa".schema_migrations))
+
+    # act
+    2.times { Lucid::Tenancy.baseline("alfa") }
+
+    # assert
+    assert_equal versions(TEMPLATE), versions("alfa")
+  end
+
+  def test_migrator_ignores_tenants_whose_schema_does_not_exist
+    # arrange
+    provision_all("alfa")
+    @klass.create!(subdomain: "ghost")
     write_migration("20260101000001", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
 
     # act
@@ -296,9 +344,82 @@ class MigratorTest < MigrationTenancyTest
 
     # assert
     assert_includes columns("alfa", "students"), "nickname"
-    assert_includes versions("alfa"), "20260101000001"
-    assert_includes columns("beta", "students"), "nickname"
-    assert_equal ["Maria"], connection.select_values(%(SELECT name FROM "alfa".students))
+    refute Lucid::Tenancy::Schema.exists?("ghost")
+    assert_equal %w[alfa], migrator.pending(paths: [@migrations_dir]).keys - ["public", TEMPLATE]
+  end
+
+  def test_rollback_counts_steps_over_all_migrations_in_version_order
+    # arrange
+    provision_all("alfa")
+    write_migration("20260101000001", "create_things", mode: :shared, body: CREATE_THINGS)
+    write_migration("20260101000002", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
+    write_migration("20260101000003", "add_age", mode: :tenant, body: ADD_AGE)
+    migrate
+
+    # act
+    rollback(steps: 1)
+    after_one = [columns("alfa", "students"), tables("public").include?("things")]
+    rollback(steps: 1)
+    after_two = [columns("alfa", "students"), tables("public").include?("things")]
+    rollback(steps: 1)
+
+    # assert
+    refute_includes after_one.first, "age"
+    assert_includes after_one.first, "nickname"
+    assert after_one.last
+    refute_includes after_two.first, "nickname"
+    assert after_two.last
+    refute_includes tables("public"), "things"
+    assert_empty versions("public")
+  end
+
+  def test_rollback_of_three_steps_undoes_the_shared_migration_too
+    # arrange
+    provision_all("alfa")
+    write_migration("20260101000001", "create_things", mode: :shared, body: CREATE_THINGS)
+    write_migration("20260101000002", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
+    write_migration("20260101000003", "add_age", mode: :tenant, body: ADD_AGE)
+    migrate
+
+    # act
+    rollback(steps: 3)
+
+    # assert
+    refute_includes tables("public"), "things"
+    refute_includes columns("alfa", "students"), "nickname"
+    refute_includes columns("alfa", "students"), "age"
+  end
+
+  def test_shared_only_migrations_hides_tenant_migrations_from_native_contexts
+    # arrange
+    write_migration("20260101000001", "create_things", mode: :shared, body: CREATE_THINGS)
+    write_migration("20260101000002", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
+
+    # act
+    context = Class.new(ActiveRecord::MigrationContext) { prepend Lucid::Tenancy::SharedOnlyMigrations }.new([@migrations_dir])
+    visible = context.migrations.map(&:version)
+    needs = silence { context.needs_migration? }
+    silence { context.migrate }
+    after = silence { context.needs_migration? }
+
+    # assert
+    assert_equal [20260101000001], visible
+    assert needs
+    refute after
+    assert_includes versions("public"), "20260101000001"
+    refute_includes versions("public"), "20260101000002"
+  end
+
+  def test_scoped_context_still_sees_its_own_mode
+    # arrange
+    write_migration("20260101000001", "create_things", mode: :shared, body: CREATE_THINGS)
+    write_migration("20260101000002", "add_nickname", mode: :tenant, body: ADD_NICKNAME)
+
+    # act
+    context = Lucid::Tenancy::Migrator::ScopedContext.new([@migrations_dir], :tenant)
+
+    # assert
+    assert_equal [20260101000002], context.migrations.map(&:version)
   end
 
   def test_migrate_restores_the_search_path

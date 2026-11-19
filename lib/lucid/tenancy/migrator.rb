@@ -32,9 +32,16 @@ module Lucid
           each_scope(paths) { |context| context.migrate(version) }
         end
 
-        # Rolls back +steps+ migrations in every schema.
+        # Rolls back the last +steps+ migrations, counted over all migrations in version order, each
+        # one in the schemas it belongs to.
         def rollback(steps: 1, paths: default_paths)
-          each_scope(paths) { |context| context.rollback(steps) }
+          applied = {}
+          each_scope(paths, name: true) do |context, schema|
+            context.get_all_versions.each { |version| (applied[version] ||= []) << schema }
+          end
+          applied.keys.sort.last(steps).reverse_each do |version|
+            each_scope(paths) { |context, schema| context.run(:down, version) if applied[version].include?(schema) }
+          end
         end
 
         # @return [Hash{String => Array<Integer>}] pending versions per schema
@@ -61,11 +68,19 @@ module Lucid
           Template.create! unless name
           schemas = []
           schemas << Template.schema if Template.exists?
-          schemas.concat(Lucid::Tenancy.map { |tenant| tenant.schema_name }) if tenancy_model?
+          schemas.concat(Lucid::Tenancy.map { |tenant| tenant.schema_name }.select { |schema| Schema.exists?(schema) }) if tenancy_model?
           schemas.each do |schema|
-            Schema.ensure_migration_tables(schema)
+            ensure_tables(schema) unless name
             Schema.with_path(schema) { yield context(paths, :tenant, pool), schema }
           end
+        end
+
+        def ensure_tables(schema)
+          return Schema.ensure_migration_tables(schema) if schema == Template.schema
+          return if Schema.migration_tables?(schema)
+
+          raise Error::MissingMigrationTable,
+                "schema #{schema.inspect} has no schema_migrations; run `rake lucid:tenancy:baseline[#{schema}]` to mark it as in sync with the template"
         end
 
         def tenancy_model?

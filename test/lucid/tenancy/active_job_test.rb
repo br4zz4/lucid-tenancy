@@ -144,6 +144,42 @@ class ActiveJobTest < TenancyTest
     assert_same @alfa, Lucid::Tenancy.current
   end
 
+  def test_perform_now_created_inside_a_tenant_runs_in_that_tenant
+    # arrange
+    job_class = define_job("TtTenantJob")
+
+    # act
+    Lucid::Tenancy.with(tenant: @alfa) { job_class.new("ana").perform_now }
+
+    # assert
+    assert_equal [@alfa.schema_name, ["ana"]], @seen
+    assert_equal "public", current_schema
+  end
+
+  def test_perform_now_created_in_a_tenant_runs_there_even_when_called_inside_another
+    # arrange
+    job_class = define_job("TtTenantJob")
+    job = Lucid::Tenancy.with(tenant: @alfa) { job_class.new }
+
+    # act
+    Lucid::Tenancy.with(tenant: @beta) { job.perform_now }
+
+    # assert
+    assert_equal [@alfa.schema_name], @seen
+  end
+
+  def test_deserialized_job_outside_tenant_runs_in_shared_even_if_worker_is_in_a_tenant
+    # arrange
+    job_class = define_job("TtTenantJob")
+    payload = job_class.new.serialize
+
+    # act
+    Lucid::Tenancy.with(tenant: @beta) { ActiveJob::Base.execute(payload) }
+
+    # assert
+    assert_equal ["public"], @seen
+  end
+
   def test_shared_job_runs_in_public_and_does_not_serialize_the_tenant
     # arrange
     job_class = define_job("TtSharedJob", mode: :shared)

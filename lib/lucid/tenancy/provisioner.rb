@@ -16,6 +16,7 @@ module Lucid
 
         Schema.connection.transaction(requires_new: true) do
           Schema.create(schema)
+          Schema.ensure_migration_tables(schema)
           Schema.with_path(schema) { load_dump(dump) }
         end
 

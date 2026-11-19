@@ -14,25 +14,29 @@ module Lucid
       end
 
       def call(env)
+        Lucid::Tenancy.set(tenant: nil)
         config = Lucid::Tenancy.configuration
-        return @app.call(env) if shared_path?(env["PATH_INFO"], config.shared_paths)
+        return clean(@app.call(env)) if shared_path?(env["PATH_INFO"], config.shared_paths)
 
-        request = Rack::Request.new(env)
-        identifier = Resolver.identifier(request)
-        return @app.call(env) if identifier.blank?
+        identifier = Resolver.identifier(Rack::Request.new(env))
+        return clean(@app.call(env)) if identifier.blank?
 
         tenant = Lucid::Tenancy.tenant_class.find_by_tenancy_identifier(identifier)
         return config.on_missing_tenant.call(env) unless tenant
 
         Lucid::Tenancy.set(tenant: tenant)
-        status, headers, body = @app.call(env)
-        [status, headers, Rack::BodyProxy.new(body) { Lucid::Tenancy.set(tenant: nil) }]
+        clean(@app.call(env))
       rescue StandardError
         Lucid::Tenancy.set(tenant: nil)
         raise
       end
 
       private
+
+      def clean(response)
+        status, headers, body = response
+        [status, headers, Rack::BodyProxy.new(body) { Lucid::Tenancy.set(tenant: nil) }]
+      end
 
       def shared_path?(path, prefixes)
         prefixes.any? { |prefix| path == prefix || path.start_with?("#{prefix.chomp('/')}/") }

@@ -17,7 +17,7 @@ module Lucid
         Schema.with_only_path(Template.schema) do
           ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection_pool, io)
         end
-        io.string.lines.reject { |line| line.match?(/\A\s*(create_schema|enable_extension)\b/) }.join
+        io.string.lines.reject { |line| line.match?(/\A\s*(create_schema|enable_extension)\b/) }.join.gsub(", force: :cascade", "")
       end
 
       # @return [Boolean] whether the file on disk matches the template schema

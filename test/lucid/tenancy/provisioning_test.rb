@@ -120,6 +120,49 @@ class ProvisioningTest < TenancyTest
     assert_includes versions, 3
   end
 
+  def test_provision_records_versions_in_the_tenant_and_not_in_public
+    # arrange
+    connection.execute("DROP TABLE IF EXISTS public.schema_migrations")
+    connection.execute("CREATE TABLE public.schema_migrations (version character varying NOT NULL PRIMARY KEY)")
+    tenant = build_tenant("alfa")
+
+    # act
+    tenant.provision
+    tenant_versions = connection.select_values("SELECT version FROM alfa.schema_migrations")
+    public_versions = connection.select_values("SELECT version FROM public.schema_migrations")
+
+    # assert
+    assert_includes tenant_versions, "3"
+    assert_empty public_versions
+  ensure
+    connection.execute("DROP TABLE IF EXISTS public.schema_migrations")
+    connection.execute("DROP TABLE IF EXISTS public.ar_internal_metadata")
+  end
+
+  def test_migrate_right_after_provision_applies_nothing_again
+    # arrange
+    connection.execute("DROP TABLE IF EXISTS public.schema_migrations")
+    Lucid::Tenancy.configure { |config| config.tenant_model = "TtOrganization"; config.template_schema = "tt_template" }
+    @test_schemas << "tt_template"
+    Lucid::Tenancy::Template.create!
+    Lucid::Tenancy::Schema.with_path("tt_template") { Lucid::Tenancy::Provisioner.load_dump(Lucid::Tenancy.configuration.tenant_schema_path) }
+    build_tenant("alfa").provision
+    dir = Dir.mktmpdir("tenancy_migrations")
+    @test_dirs << dir
+
+    # act
+    before = connection.select_values("SELECT version FROM alfa.schema_migrations").sort
+    Lucid::Tenancy::Migrator.migrate(paths: [dir])
+    after = connection.select_values("SELECT version FROM alfa.schema_migrations").sort
+
+    # assert
+    assert_equal before, after
+  ensure
+    connection.execute("DROP SCHEMA IF EXISTS tt_template CASCADE")
+    connection.execute("DROP TABLE IF EXISTS public.schema_migrations")
+    connection.execute("DROP TABLE IF EXISTS public.ar_internal_metadata")
+  end
+
   def test_provision_returns_tenant_and_restores_search_path
     # arrange
     tenant = build_tenant("alfa")

@@ -27,6 +27,11 @@ module Lucid
         end
       end
 
+      def initialize(*)
+        super
+        @lucid_tenancy_origin = Lucid::Tenancy.current
+      end
+
       def serialize
         data = super
         tenant = Lucid::Tenancy.current
@@ -36,6 +41,7 @@ module Lucid
 
       def deserialize(job_data)
         super
+        @lucid_tenancy_origin = nil
         @lucid_tenancy_schema = job_data[KEY]
       end
 
@@ -47,6 +53,7 @@ module Lucid
 
       def lucid_tenancy_perform(&block)
         return Lucid::Tenancy.shared(&block) if self.class.tenancy_mode == :shared
+        return Lucid::Tenancy.with(tenant: @lucid_tenancy_origin, &block) if !@lucid_tenancy_schema && @lucid_tenancy_origin
         return Lucid::Tenancy.shared(&block) unless @lucid_tenancy_schema
 
         Lucid::Tenancy.with(tenant: @lucid_tenancy_schema, &block)

@@ -11,6 +11,12 @@ module Lucid
         ActiveSupport.on_load(:active_job) { include Lucid::Tenancy::ActiveJobExtension }
       end
 
+      initializer "lucid_tenancy.pending_check" do
+        ActiveSupport.on_load(:active_record) do
+          ActiveRecord::MigrationContext.prepend(Lucid::Tenancy::SharedOnlyMigrations)
+        end
+      end
+
       rake_tasks do
         load File.expand_path("../../tasks/lucid_tenancy.rake", __dir__)
       end

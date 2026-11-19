@@ -17,6 +17,9 @@ module Lucid
       # A migration did not declare +tenancy :tenant+ or +tenancy :shared+.
       class MissingTenancyDeclaration < Error; end
 
+      # A tenant schema has no +schema_migrations+ table; run +lucid:tenancy:baseline+ for it.
+      class MissingMigrationTable < Error; end
+
       # The tenant model was declared twice with different settings.
       class ConfigurationConflict < Error; end
     end

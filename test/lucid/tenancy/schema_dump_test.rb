@@ -30,6 +30,15 @@ class SchemaDumpTest < MigrationTenancyTest
     refute_includes dump, "tt_organizations"
   end
 
+  def test_dump_does_not_contain_force_cascade
+    # arrange
+    # act
+    dump = SchemaDump.dump
+
+    # assert
+    refute_includes dump, "force: :cascade"
+  end
+
   def test_dump_does_not_qualify_table_names_with_the_template_schema
     # arrange
     # act

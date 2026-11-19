@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+- Provisioning records versions in the tenant schema; a tenant without `schema_migrations` must be baselined (`lucid:tenancy:baseline`); the middleware always clears the tenant; `rollback` counts steps over all migrations; Active Job `perform_now` keeps its origin tenant; `db:migrate:*` tasks are tenancy-aware.
+
 ## 0.1.1
 
 - Migrations are recorded in the schema they ran in (each tenant and the template get their own `schema_migrations`); the rake tasks load the Rails config correctly.

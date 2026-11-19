@@ -4,17 +4,25 @@ namespace :lucid do
     task migrate: "db:load_config" do
       Lucid::Tenancy::Migrator.migrate
       Rake::Task["lucid:tenancy:dump"].invoke
+      Rake::Task["db:schema:dump"].invoke if Rake::Task.task_defined?("db:schema:dump")
     end
 
     desc "Rolls back STEP migrations (default 1) in every schema"
     task rollback: "db:load_config" do
       Lucid::Tenancy::Migrator.rollback(steps: ENV.fetch("STEP", 1).to_i)
       Rake::Task["lucid:tenancy:dump"].invoke
+      Rake::Task["db:schema:dump"].invoke if Rake::Task.task_defined?("db:schema:dump")
     end
 
     desc "Lists pending migrations per schema"
     task status: "db:load_config" do
       Lucid::Tenancy::Migrator.pending.each { |schema, versions| puts "#{schema}: #{versions.empty? ? 'up to date' : versions.join(', ')}" }
+    end
+
+    desc "Creates the version table of a tenant schema that has none, marked in sync with the template"
+    task :baseline, [:identifier] => "db:load_config" do |_task, args|
+      tenants = args[:identifier] ? [Lucid::Tenancy.send(:resolve, args[:identifier])] : Lucid::Tenancy.to_a
+      tenants.each { |tenant| puts "baseline: #{Lucid::Tenancy.baseline(tenant)}" }
     end
 
     desc "Writes db/tenant_schema.rb from the template schema"
@@ -29,9 +37,24 @@ namespace :lucid do
   end
 end
 
-if Rake::Task.task_defined?("db:migrate")
-  Rake::Task["db:migrate"].clear
-  Rake::Task["db:rollback"].clear if Rake::Task.task_defined?("db:rollback")
+%w[db:migrate db:rollback db:migrate:status db:migrate:up db:migrate:down db:migrate:redo].each do |name|
+  Rake::Task[name].clear if Rake::Task.task_defined?(name)
+end
+
+namespace :db do
+  namespace :migrate do
+    desc "Lists pending migrations per schema"
+    task status: "db:load_config" do
+      Rake::Task["lucid:tenancy:status"].invoke
+    end
+
+    %w[up down redo].each do |name|
+      desc "Not supported by lucid-tenancy: use db:migrate and db:rollback"
+      task name => "db:load_config" do
+        abort "db:migrate:#{name} runs in the shared schema only; use db:migrate or db:rollback STEP=n with lucid-tenancy"
+      end
+    end
+  end
 end
 
 namespace :db do

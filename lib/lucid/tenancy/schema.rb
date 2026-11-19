@@ -28,8 +28,13 @@ module Lucid
 
       # Makes sure +schema+ has its own +schema_migrations+ and +ar_internal_metadata+, so a
       # migration is recorded in the schema it ran in and never in the shared one.
-      def ensure_migration_tables(schema)
+      def migration_tables?(schema)
+        !connection.select_value("SELECT to_regclass(#{connection.quote("#{connection.quote_schema_name(schema)}.schema_migrations")})::text").nil?
+      end
+
+      def ensure_migration_tables(schema, seed_from: nil)
         quoted = connection.quote_schema_name(schema)
+        fresh = connection.select_value("SELECT to_regclass(#{connection.quote("#{quoted}.schema_migrations")})::text").nil?
         connection.execute("CREATE TABLE IF NOT EXISTS #{quoted}.schema_migrations (version character varying NOT NULL PRIMARY KEY)")
         connection.execute(<<~SQL)
           CREATE TABLE IF NOT EXISTS #{quoted}.ar_internal_metadata (
@@ -39,6 +44,16 @@ module Lucid
             updated_at timestamp(6) without time zone NOT NULL
           )
         SQL
+        seed_versions(schema, seed_from) if fresh && seed_from && exists?(seed_from)
+      end
+
+      # A schema that had no version table is assumed to be in sync with +source+, so its
+      # migrations are not run again.
+      def seed_versions(schema, source)
+        connection.execute(
+          "INSERT INTO #{connection.quote_schema_name(schema)}.schema_migrations (version) " \
+          "SELECT version FROM #{connection.quote_schema_name(source)}.schema_migrations ON CONFLICT DO NOTHING"
+        )
       end
 
       # Runs the block with +schema+ (then the shared schema) as search_path and restores the previous one.
