@@ -1,0 +1,8 @@
+.worktrees/
+.bundle/
+Gemfile.lock
+*.gem
+coverage/
+doc/
+.yardoc/
+tmp/
