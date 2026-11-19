@@ -20,6 +20,16 @@ module Lucid
       attr_accessor :after_provision
       # @return [String] path of the template dump loaded to create a tenant schema
       attr_writer :tenant_schema_path
+      # @return [String, nil] domain the tenants live under (tenants are its subdomains)
+      attr_accessor :base_domain
+      # @return [#call, nil] request -> tenant identifier; default: the subdomain under +base_domain+
+      attr_accessor :resolver
+      # @return [Array<String>] path prefixes served without a tenant (matched on a path boundary)
+      attr_accessor :shared_paths
+      # @return [#call] Rack app answering when the host names a tenant that does not exist
+      attr_accessor :on_missing_tenant
+      # @return [Array<String, IPAddr>] proxies whose X-Forwarded-Host is trusted
+      attr_accessor :trusted_proxies
       # @return [Array<String, Regexp>] identifiers that can never be a tenant, besides the built-in ones
       attr_accessor :reserved_identifiers
 
@@ -43,6 +53,11 @@ module Lucid
         @template_schema = "tenancy_template"
         @shared_schema = "public"
         @reserved_identifiers = []
+        @base_domain = nil
+        @resolver = nil
+        @shared_paths = []
+        @on_missing_tenant = ->(_env) { [404, { "content-type" => "text/plain" }, ["Not Found"]] }
+        @trusted_proxies = []
         @after_provision = nil
         @tenant_schema_path = nil
         @tenant_identifier_explicit = false

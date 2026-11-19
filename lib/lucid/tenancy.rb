@@ -18,6 +18,8 @@ require "lucid/tenancy/collection"
 require "lucid/tenancy/migration"
 require "lucid/tenancy/migrator"
 require "lucid/tenancy/schema_dump"
+require "lucid/tenancy/resolver"
+require "lucid/tenancy/middleware"
 
 module Lucid
   # Multi-tenancy on PostgreSQL: one schema per tenant, inside the same database.
