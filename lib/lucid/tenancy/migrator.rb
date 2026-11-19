@@ -56,8 +56,9 @@ module Lucid
         def each_scope(paths, name: false)
           pool = ActiveRecord::Base.connection_pool
           shared = Lucid::Tenancy.configuration.shared_schema
-          Schema.with_path(shared) { yield context(paths, :shared, pool), shared } if true
+          Schema.with_path(shared) { yield context(paths, :shared, pool), shared }
 
+          Template.create! unless name
           schemas = []
           schemas << Template.schema if Template.exists?
           schemas.concat(Lucid::Tenancy.map { |tenant| tenant.schema_name }) if tenancy_model?

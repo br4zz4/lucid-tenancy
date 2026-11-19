@@ -98,6 +98,11 @@ module Lucid
         Provisioner.provision(tenant)
       end
 
+      # @return [Boolean] whether the schema of +tenant+ exists
+      def provisioned?(tenant)
+        Schema.exists?(tenant.schema_name)
+      end
+
       # Drops the schema of +tenant+ with everything in it.
       def drop(tenant)
         Provisioner.drop(tenant)

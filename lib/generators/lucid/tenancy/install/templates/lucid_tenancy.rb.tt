@@ -1,0 +1,28 @@
+Lucid::Tenancy.configure do |config|
+  # The model that represents a tenant and the attribute that identifies it.
+  # The identifier becomes the schema name (hyphens become underscores).
+  config.tenant_model = "Organization"
+  config.tenant_identifier = :subdomain
+
+  # Tenants are the subdomains of this domain.
+  # config.base_domain = ENV["TENANT_BASE_DOMAIN"]
+
+  # Paths served without a tenant (matched on a path boundary: "/up" does not match "/update").
+  # config.shared_paths = ["/up"]
+
+  # Rack app that answers when the host names a tenant that does not exist (default: 404).
+  # config.on_missing_tenant = ->(env) { [404, { "content-type" => "text/plain" }, ["Not found"]] }
+
+  # Proxies whose X-Forwarded-Host is trusted (IPs or CIDRs). Empty: the header is ignored.
+  # config.trusted_proxies = ["10.0.0.0/8"]
+
+  # Called inside the new schema after a tenant is provisioned, for initial data.
+  # config.after_provision = ->(tenant) { }
+
+  # Identifiers that can never be a tenant, besides public, pg_*, information_schema and the template.
+  # config.reserved_identifiers = %w[www admin api]
+
+  # Schema new tenants are built from (internal) and the dump that is loaded to create one.
+  # config.template_schema = "tenancy_template"
+  # config.tenant_schema_path = Rails.root.join("db/tenant_schema.rb").to_s
+end
