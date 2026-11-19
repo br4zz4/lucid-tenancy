@@ -25,7 +25,6 @@ module Lucid
           self.tenancy_mode = mode
           return unless mode == :shared
 
-          reset_table_name
           table = table_name.to_s.split(".").last
           self.table_name = "#{Lucid::Tenancy.configuration.shared_schema}.#{table}"
         end

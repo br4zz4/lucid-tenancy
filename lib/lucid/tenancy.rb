@@ -10,6 +10,11 @@ require "lucid/tenancy/state"
 require "lucid/tenancy/identifier"
 require "lucid/tenancy/model"
 require "lucid/tenancy/connection_extension"
+require "lucid/tenancy/schema"
+require "lucid/tenancy/template"
+require "lucid/tenancy/tenant"
+require "lucid/tenancy/provisioner"
+require "lucid/tenancy/collection"
 
 module Lucid
   # Multi-tenancy on PostgreSQL: one schema per tenant, inside the same database.
@@ -18,6 +23,8 @@ module Lucid
   #   Lucid::Tenancy.with(tenant: school) { Student.count }
   #   Lucid::Tenancy.shared { Organization.count }
   module Tenancy
+    extend Collection
+
     class << self
       # @return [Lucid::Tenancy::Configuration]
       def configuration
@@ -35,6 +42,7 @@ module Lucid
       # Restores the default configuration.
       def reset_configuration!
         @configuration = Configuration.new
+        @registered_tenant_model = nil
       end
 
       # Runs the block in the schema of +tenant+ and restores the previous schema afterwards, even on error.
@@ -76,6 +84,56 @@ module Lucid
         State.tenant ? :tenant : :shared
       end
 
+      # Creates the schema of +tenant+ from the template dump, inside a transaction.
+      #
+      # @raise [Error::AlreadyProvisioned] the schema already exists
+      def provision(tenant)
+        Provisioner.provision(tenant)
+      end
+
+      # Drops the schema of +tenant+ with everything in it.
+      def drop(tenant)
+        Provisioner.drop(tenant)
+      end
+
+      # @return [Class] the model that represents a tenant (from +config.tenant_model+ or the model that includes Tenant)
+      # @raise [Error::TenantNotFound] no tenant model is known
+      def tenant_class
+        name = configuration.tenant_model || @registered_tenant_model
+        raise Error::TenantNotFound, "no tenant model: set config.tenant_model or include Lucid::Tenancy::Tenant" unless name
+
+        klass = name.to_s.constantize
+        klass.include(Tenant) unless klass < Tenant
+        klass
+      end
+
+      # @api private
+      def register_tenant_model(klass)
+        configured = configuration.tenant_model
+        if configured && configured.to_s != klass.name
+          raise Error::ConfigurationConflict, "tenant model is configured as #{configured} but #{klass.name} includes Lucid::Tenancy::Tenant"
+        end
+        if @registered_tenant_model && @registered_tenant_model != klass.name
+          raise Error::ConfigurationConflict, "#{@registered_tenant_model} and #{klass.name} are both declared as tenant model"
+        end
+
+        @registered_tenant_model = klass.name
+      end
+
+      # @api private
+      def register_tenant_identifier(klass, attribute)
+        configured = configuration
+        return unless configured.tenant_identifier_explicit? && configured.tenant_identifier != attribute
+
+        raise Error::ConfigurationConflict,
+              "#{klass.name} identifies tenants by #{attribute} but config.tenant_identifier is #{configured.tenant_identifier}"
+      end
+
+      # @api private
+      def forget_registered_tenant_model!
+        @registered_tenant_model = nil
+      end
+
       # @api private
       def search_path_for(tenant, connection)
         shared_schema = connection.quote_schema_name(configuration.shared_schema)
@@ -89,9 +147,6 @@ module Lucid
       def resolve(tenant)
         return nil if tenant.nil?
         return tenant if tenant.respond_to?(:schema_name)
-
-        tenant_class = configuration.tenant_model&.then { |name| name.constantize }
-        raise Error::TenantNotFound, "no tenant model configured to resolve #{tenant.inspect}" unless tenant_class
 
         tenant_class.find_by_tenancy_identifier(tenant) ||
           raise(Error::TenantNotFound, "no tenant #{tenant.inspect}")
@@ -108,12 +163,6 @@ end
 
 ActiveSupport.on_load(:active_record) do
   include Lucid::Tenancy::Model
-
-  ActiveRecord::Base.class_eval do
-    def self.find_by_tenancy_identifier(identifier)
-      find_by(Lucid::Tenancy.configuration.tenant_identifier => identifier.to_s)
-    end
-  end
 end
 
 ActiveSupport.on_load(:active_record_postgresqladapter) do

@@ -147,21 +147,17 @@ class SwitchingTest < TenancyTest
 
   def test_string_tenant_resolved_through_tenant_model
     # arrange
-    tenant = create_tenant_schema("alfa")
-    finder = Class.new do
-      define_singleton_method(:find_by_tenancy_identifier) { |id| id.to_s == "alfa" ? tenant : nil }
-    end
-    Object.const_set(:TtTenantFinder, finder)
-    Lucid::Tenancy.configure { |config| config.tenant_model = "TtTenantFinder" }
+    create_tenant_schema("alfa")
+    define_test_class("TtOrganization")
+    Lucid::Tenancy.configure { |config| config.tenant_model = "TtOrganization" }
+    Lucid::Tenancy.tenant_class.create!(subdomain: "tt_alfa")
 
     # act
-    inside = Lucid::Tenancy.with(tenant: "alfa") { current_schema }
+    inside = Lucid::Tenancy.with(tenant: "tt_alfa") { current_schema }
 
     # assert
     assert_equal "tt_alfa", inside
     assert_raises(Error::TenantNotFound) { Lucid::Tenancy.with(tenant: "zzz") { flunk } }
-  ensure
-    Object.send(:remove_const, :TtTenantFinder) if Object.const_defined?(:TtTenantFinder)
   end
 
   def test_threads_see_their_own_tenant_simultaneously
