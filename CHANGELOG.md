@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4
+
+- Fixed `ConnectionNotDefined` during `db:schema:dump`: the primary pool check no longer needs a connected `ActiveRecord::Base` (`Lucid::Tenancy.primary_db_name`).
+
 ## 0.1.3
 
 - Action Cable runs each command inside `around_command`, so the tenant is restored even when the command raises and never leaks from a previous one.

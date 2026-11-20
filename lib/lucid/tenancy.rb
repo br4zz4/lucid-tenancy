@@ -163,6 +163,18 @@ module Lucid
         @registered_tenant_model = nil
       end
 
+      # Name of the primary database configuration. Does not need an established connection on
+      # +ActiveRecord::Base+, so it also works while Rails re-establishes it (e.g. +db:schema:dump+).
+      #
+      # @return [String, nil]
+      def primary_db_name
+        ActiveRecord::Base.connection_pool.db_config.name
+      rescue ActiveRecord::ConnectionNotDefined
+        ActiveRecord::Base.configurations
+                          .configs_for(env_name: ActiveRecord::ConnectionHandling::DEFAULT_ENV.call)
+                          .first&.name
+      end
+
       # @api private
       def search_path_for(tenant, connection)
         shared_schema = connection.quote_schema_name(configuration.shared_schema)

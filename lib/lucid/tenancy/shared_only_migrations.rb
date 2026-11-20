@@ -14,9 +14,8 @@ module Lucid
       private
 
       def primary_pool?
-        primary = ActiveRecord::Base.connection_pool
         pool = connection_pool
-        pool.nil? || pool.db_config.name == primary.db_config.name
+        pool.nil? || pool.db_config.name == Lucid::Tenancy.primary_db_name
       end
     end
   end

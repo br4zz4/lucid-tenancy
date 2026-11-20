@@ -29,7 +29,7 @@ module Lucid
       # @api private
       def lucid_tenancy_primary?
         owner = pool
-        owner.nil? || owner.db_config.name == ActiveRecord::Base.connection_pool.db_config.name
+        owner.nil? || owner.db_config.name == Lucid::Tenancy.primary_db_name
       end
 
       private
