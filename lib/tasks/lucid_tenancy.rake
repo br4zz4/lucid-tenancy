@@ -67,4 +67,9 @@ namespace :db do
   task rollback: "db:load_config" do
     Rake::Task["lucid:tenancy:rollback"].invoke
   end
+
+  task :prepare do
+    Lucid::Tenancy::Migrator.migrate
+    Rake::Task["lucid:tenancy:dump"].invoke
+  end
 end

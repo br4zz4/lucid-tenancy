@@ -55,3 +55,7 @@ bin/rails lucid:tenancy:check
 ```
 
 The task aborts with `db/tenant_schema.rb is out of date, run lucid:tenancy:dump` when the committed dump differs from the template schema. Run it after migrating in CI to catch a migration committed without its dump.
+
+## db:prepare and pending checks
+
+`db:prepare` runs Rails' own preparation (every configured database) and then the tenant-aware migrator, so an existing database is brought up to date in every schema and a new one gets the shared schema plus the template and tenants. Rails' `check_all_pending!` and `maintain_test_schema!` only see `tenancy :shared` migrations; check tenants with `rake lucid:tenancy:status`.

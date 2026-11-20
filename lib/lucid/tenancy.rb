@@ -25,6 +25,13 @@ require "lucid/tenancy/active_job_extension"
 require "lucid/tenancy/minitest"
 
 module Lucid
+  module Tenancy
+    autoload :ActionCable, "lucid/tenancy/action_cable"
+    autoload :RSpec, "lucid/tenancy/rspec"
+  end
+end
+
+module Lucid
   # Multi-tenancy on PostgreSQL: one schema per tenant, inside the same database.
   #
   # @example
@@ -191,7 +198,7 @@ end
 require "lucid/tenancy/railtie" if defined?(Rails::Railtie)
 
 ActiveSupport.on_load(:active_record_postgresqladapter) do
-  include Lucid::Tenancy::ConnectionExtension
+  prepend Lucid::Tenancy::ConnectionExtension
   set_callback :checkin, :before, :lucid_tenancy_reset
   set_callback :checkout, :after, :lucid_tenancy_checkout
 end

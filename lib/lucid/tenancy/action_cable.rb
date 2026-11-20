@@ -11,8 +11,7 @@ module Lucid
     module ActionCable
       def self.included(base)
         base.identified_by :tenant_identifier
-        base.before_command { Lucid::Tenancy.set(tenant: tenant_identifier) if tenant_identifier }
-        base.after_command { Lucid::Tenancy.set(tenant: nil) }
+        base.around_command { |connection, block| Lucid::Tenancy.with(tenant: connection.tenant_identifier.presence, &block) }
       end
 
       def connect

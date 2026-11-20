@@ -31,8 +31,6 @@ The extension is included in `ActiveJob::Base` by the Railtie.
 ## Action Cable
 
 ```ruby
-require "lucid/tenancy/action_cable"
-
 module ApplicationCable
   class Connection < ActionCable::Connection::Base
     include Lucid::Tenancy::ActionCable
@@ -40,4 +38,4 @@ module ApplicationCable
 end
 ```
 
-On connect the tenant identifier is resolved from the request host with the same resolver as the middleware, and the connection is `identified_by :tenant_identifier`. Before each command the tenant is set, and after each command the schema goes back to shared.
+On connect the tenant identifier is resolved from the request host with the same resolver as the middleware, and the connection is `identified_by :tenant_identifier`. Each command runs inside `around_command` with that tenant (or the shared schema when there is none) and the previous state is restored afterwards, even if the command raises.

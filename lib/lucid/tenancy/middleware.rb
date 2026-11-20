@@ -14,7 +14,7 @@ module Lucid
       end
 
       def call(env)
-        Lucid::Tenancy.set(tenant: nil)
+        Lucid::Tenancy.set(tenant: nil) if Lucid::Tenancy.current
         config = Lucid::Tenancy.configuration
         return clean(@app.call(env)) if shared_path?(env["PATH_INFO"], config.shared_paths)
 
@@ -35,7 +35,13 @@ module Lucid
 
       def clean(response)
         status, headers, body = response
-        [status, headers, Rack::BodyProxy.new(body) { Lucid::Tenancy.set(tenant: nil) }]
+        [status, headers, Rack::BodyProxy.new(body) { release }]
+      end
+
+      def release
+        Lucid::Tenancy.set(tenant: nil)
+      rescue StandardError => e
+        (defined?(Rails) && Rails.logger)&.warn("lucid-tenancy: could not release the tenant: #{e.message}")
       end
 
       def shared_path?(path, prefixes)

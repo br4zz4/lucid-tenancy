@@ -37,7 +37,8 @@ module Lucid
         def rollback(steps: 1, paths: default_paths)
           applied = {}
           each_scope(paths, name: true) do |context, schema|
-            context.get_all_versions.each { |version| (applied[version] ||= []) << schema }
+            known = context.migrations.map(&:version)
+            context.get_all_versions.each { |version| (applied[version] ||= []) << schema if known.include?(version) }
           end
           applied.keys.sort.last(steps).reverse_each do |version|
             each_scope(paths) { |context, schema| context.run(:down, version) if applied[version].include?(schema) }

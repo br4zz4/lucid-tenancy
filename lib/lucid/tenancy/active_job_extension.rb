@@ -34,7 +34,7 @@ module Lucid
 
       def serialize
         data = super
-        tenant = Lucid::Tenancy.current
+        tenant = @lucid_tenancy_origin || Lucid::Tenancy.current
         data[KEY] = lucid_tenancy_identifier(tenant) if tenant && self.class.tenancy_mode == :tenant
         data
       end

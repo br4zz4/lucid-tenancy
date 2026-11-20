@@ -20,8 +20,23 @@ module Lucid
 
       # @api private
       def lucid_tenancy_checkout
+        return unless lucid_tenancy_primary?
+
         tenant = Lucid::Tenancy::State.tenant
         lucid_tenancy_apply(Lucid::Tenancy.search_path_for(tenant, self)) if tenant
+      end
+
+      # @api private
+      def lucid_tenancy_primary?
+        owner = pool
+        owner.nil? || owner.db_config.name == ActiveRecord::Base.connection_pool.db_config.name
+      end
+
+      private
+
+      def configure_connection
+        super
+        lucid_tenancy_checkout
       end
     end
   end

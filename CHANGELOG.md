@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.3
+
+- Action Cable runs each command inside `around_command`, so the tenant is restored even when the command raises and never leaks from a previous one.
+- The PostgreSQL adapter reapplies the tenant `search_path` on `reconnect!`/`verify!`; the checkout callback only touches the primary pool, never cache or cable.
+- `rollback` ignores versions in a schema that its migration context does not know (orphan versions no longer raise `UnknownMigrationVersionError`).
+- `db:prepare` also runs the tenant-aware migrator (existing and new databases) and refreshes the tenant dump. `ActiveRecord::Migration.check_all_pending!` and `maintain_test_schema!` still see only the shared schema; use `lucid:tenancy:status` for tenants.
+- `serialize` of an Active Job uses its origin tenant; the shared-only migration filter applies only to the primary database.
+- `Lucid::Tenancy::ActionCable` and `Lucid::Tenancy::RSpec` are autoloaded.
+- The middleware never raises while closing the body and skips a redundant `SET` when already in the shared schema.
+- `baseline` also seeds a `schema_migrations` that exists but is empty.
+
 ## 0.1.2
 
 - Provisioning records versions in the tenant schema; a tenant without `schema_migrations` must be baselined (`lucid:tenancy:baseline`); the middleware always clears the tenant; `rollback` counts steps over all migrations; Active Job `perform_now` keeps its origin tenant; `db:migrate:*` tasks are tenancy-aware.

@@ -6,9 +6,17 @@ module Lucid
     module SharedOnlyMigrations
       def migrations
         all = super
-        return all if is_a?(Migrator::ScopedContext)
+        return all if is_a?(Migrator::ScopedContext) || !primary_pool?
 
         all.select { |proxy| Migrator.mode_of(proxy) == :shared }
+      end
+
+      private
+
+      def primary_pool?
+        primary = ActiveRecord::Base.connection_pool
+        pool = connection_pool
+        pool.nil? || pool.db_config.name == primary.db_config.name
       end
     end
   end
