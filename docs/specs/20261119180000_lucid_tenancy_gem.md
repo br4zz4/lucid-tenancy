@@ -292,11 +292,11 @@ Repo luneta (após a tag): 1. #<B1> gem e configuração · 2. #<B2> runtime e j
 - [ ] Todo cenário de "acceptance criteria" foi validado (automatizado ou verificado com comando exato)
 - [x] Testes automáticos passando — suíte verde, não só a parte nova (`bundle exec rake test` na gem; `make core.check` no luneta)
 - [ ] Toda task do "how" executada
-- [ ] Documentação atualizada (ver "documentation")
+- [x] Documentação atualizada (AGENTS.md, CLAUDE.md, CONTEXT.md, ADR 0006, skill rails 3abb4d3)
 - [x] Staging: `staging: none` declarado
 - [ ] Cada PR da sequência validado isoladamente (build e testes verdes sem os PRs seguintes)
 - [x] Último PR liga a funcionalidade e remove código temporário (`Hotel` e afins removidos)
-- [ ] CI da gem verde em ubuntu 3.2, ubuntu 3.4 e macOS 3.4 com PostgreSQL
+- [x] CI da gem verde em ubuntu 3.2, ubuntu 3.4 e macOS 3.4 com PostgreSQL (run 44654037225)
 - [x] Tag publicada em `br4zz4/lucid-tenancy` (v0.1.0 a v0.1.2; o luneta consome a v0.1.2)
 - [x] Troca de tenant: bloco, exceção, sem bloco, shared, tabelas compartilhadas (`switching_test.rb`, `model_test.rb`)
 - [x] Enumerable: `each`, `map`, `find`, `count` sem troca, restauração (`collection_test.rb`)
