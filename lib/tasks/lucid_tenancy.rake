@@ -25,14 +25,14 @@ namespace :lucid do
       tenants.each { |tenant| puts "baseline: #{Lucid::Tenancy.baseline(tenant)}" }
     end
 
-    desc "Writes db/tenant_schema.rb from the template schema"
+    desc "Writes the tenant schema dump (config.tenant_schema_path) from the template schema"
     task dump: "db:load_config" do
       Lucid::Tenancy::SchemaDump.write if Lucid::Tenancy::Template.exists?
     end
 
-    desc "Fails when db/tenant_schema.rb is out of sync with the template schema"
+    desc "Fails when the tenant schema dump (config.tenant_schema_path) is out of sync with the template schema"
     task check: "db:load_config" do
-      abort "db/tenant_schema.rb is out of date, run lucid:tenancy:dump" unless Lucid::Tenancy::SchemaDump.in_sync?
+      abort "#{Lucid::Tenancy.configuration.tenant_schema_path} is out of date, run lucid:tenancy:dump" unless Lucid::Tenancy::SchemaDump.in_sync?
     end
   end
 end
