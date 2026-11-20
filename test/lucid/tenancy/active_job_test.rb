@@ -67,6 +67,43 @@ class ActiveJobTest < TenancyTest
     assert_equal "alfa", payload[KEY]
   end
 
+  def test_serialize_uses_the_origin_tenant_even_when_called_outside_it
+    # arrange
+    job_class = define_job("TtTenantJob")
+    job = Lucid::Tenancy.with(tenant: @alfa) { job_class.new }
+
+    # act
+    payload = job.serialize
+
+    # assert
+    assert_nil Lucid::Tenancy.current
+    assert_equal "alfa", payload[KEY]
+  end
+
+  def test_serialize_uses_the_origin_tenant_even_when_called_inside_another
+    # arrange
+    job_class = define_job("TtTenantJob")
+    job = Lucid::Tenancy.with(tenant: @alfa) { job_class.new }
+
+    # act
+    payload = Lucid::Tenancy.with(tenant: @beta) { job.serialize }
+
+    # assert
+    assert_equal "alfa", payload[KEY]
+  end
+
+  def test_job_created_outside_a_tenant_serializes_as_shared
+    # arrange
+    job_class = define_job("TtTenantJob")
+    job = job_class.new
+
+    # act
+    payload = job.serialize
+
+    # assert
+    refute payload.key?(KEY)
+  end
+
   def test_job_runs_in_the_tenant_schema_from_another_thread_without_current_tenant
     # arrange
     job_class = define_job("TtTenantJob")

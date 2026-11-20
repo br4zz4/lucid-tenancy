@@ -1,5 +1,6 @@
 require "test_helper"
 require "rack/mock"
+require "minitest/mock"
 require "lucid/tenancy/railtie"
 
 class MiddlewareTest < TenancyTest
@@ -261,6 +262,77 @@ class MiddlewareTest < TenancyTest
     # assert
     assert_nil Lucid::Tenancy.current
     assert_equal "public", current_schema
+  end
+
+  def capture_sql
+    statements = []
+    callback = ->(*, payload) { statements << payload[:sql] }
+    ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { yield }
+    statements
+  end
+
+  def with_rails_logger(logger)
+    Rails.define_singleton_method(:logger) { logger }
+    yield
+  ensure
+    Rails.singleton_class.send(:remove_method, :logger)
+  end
+
+  def search_path_statements(statements)
+    statements.grep(/\bSET\b.*search_path/i)
+  end
+
+  def test_call_without_a_current_tenant_does_not_issue_a_set
+    # arrange
+    app = Lucid::Tenancy::Middleware.new(probe)
+
+    # act
+    statements = capture_sql { get(app, "/", "app.test") }
+
+    # assert
+    assert_empty search_path_statements(statements)
+  end
+
+  def test_call_with_a_current_tenant_resets_it_with_a_set
+    # arrange
+    Lucid::Tenancy.set(tenant: @globex)
+    app = Lucid::Tenancy::Middleware.new(probe)
+
+    # act
+    statements = capture_sql { get(app, "/", "app.test") }
+
+    # assert
+    refute_empty search_path_statements(statements)
+    assert_nil Lucid::Tenancy.current
+  end
+
+  def test_failure_while_closing_the_body_does_not_propagate_and_is_logged
+    # arrange
+    log = StringIO.new
+    app = Lucid::Tenancy::Middleware.new(probe)
+    _status, _headers, body = get(app, "/", "acme.app.test")
+    failure = ->(**) { raise ArgumentError, "close failed" }
+
+    # act
+    with_rails_logger(Logger.new(log)) { Lucid::Tenancy.stub(:set, failure) { body.close } }
+
+    # assert
+    assert_match(/could not release the tenant: close failed/, log.string)
+  end
+
+  def test_failure_while_closing_the_body_without_a_logger_does_not_propagate
+    # arrange
+    app = Lucid::Tenancy::Middleware.new(probe)
+    _status, _headers, body = get(app, "/", "acme.app.test")
+    failure = ->(**) { raise ArgumentError, "close failed" }
+    closed = false
+
+    # act
+    with_rails_logger(nil) { Lucid::Tenancy.stub(:set, failure) { body.close } }
+    closed = true
+
+    # assert
+    assert closed
   end
 
   def test_railtie_registers_the_middleware_initializer

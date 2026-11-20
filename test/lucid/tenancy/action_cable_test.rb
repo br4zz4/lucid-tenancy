@@ -1,54 +1,24 @@
 require "test_helper"
+require "action_cable"
+require "action_dispatch"
 require "rack/mock"
-require "rack/request"
-require "lucid/tenancy/action_cable"
 
 class ActionCableTest < TenancyTest
-  class FakeBase
-    class << self
-      def identifiers
-        @identifiers ||= []
-      end
+  class RecordingSubscriptions
+    attr_reader :payloads
 
-      def before_commands
-        @before_commands ||= []
-      end
-
-      def after_commands
-        @after_commands ||= []
-      end
-
-      def identified_by(*names)
-        identifiers.concat(names)
-        attr_accessor(*names)
-      end
-
-      def before_command(&block)
-        before_commands << block
-      end
-
-      def after_command(&block)
-        after_commands << block
-      end
+    def initialize(&on_execute)
+      @payloads = []
+      @on_execute = on_execute
     end
 
-    attr_reader :request, :connected
-
-    def initialize(request)
-      @request = request
-    end
-
-    def connect
-      @connected = true
-    end
-
-    def run_command
-      self.class.before_commands.each { |callback| instance_exec(&callback) }
-      yield
-    ensure
-      self.class.after_commands.each { |callback| instance_exec(&callback) }
+    def execute_command(payload)
+      @payloads << payload
+      @on_execute&.call(payload)
     end
   end
+
+  FakeServer = Struct.new(:worker_pool, :config, :logger, :event_loop, keyword_init: true)
 
   def setup
     super
@@ -59,38 +29,48 @@ class ActionCableTest < TenancyTest
       config.base_domain = "app.test"
     end
     @alfa = provision_tenant(TtOrganization, "alfa")
-    @connection_class = Class.new(FakeBase) { include Lucid::Tenancy::ActionCable }
+    @beta = provision_tenant(TtOrganization, "beta")
+    @connection_class = Class.new(ActionCable::Connection::Base) { include Lucid::Tenancy::ActionCable }
   end
 
-  def request_for(host)
-    Rack::Request.new(Rack::MockRequest.env_for("http://#{host}/cable"))
+  def build_connection(host)
+    logger = Logger.new(nil)
+    server = FakeServer.new(worker_pool: nil, config: ActionCable::Server::Configuration.new.tap { |c| c.logger = logger }, logger: logger)
+    env = Rack::MockRequest.env_for("http://#{host}/cable")
+    @connection_class.new(server, env)
   end
 
-  def test_including_declares_tenant_identifier_and_command_callbacks
+  def run_command(connection, &block)
+    connection.instance_variable_set(:@subscriptions, RecordingSubscriptions.new(&block))
+    connection.send(:handle_channel_command, { "command" => "message" })
+  end
+
+  def test_including_declares_the_tenant_identifier_and_the_command_callback
     # arrange
     klass = @connection_class
 
-    # act & assert
-    assert_equal [:tenant_identifier], klass.identifiers
-    assert_equal 1, klass.before_commands.size
-    assert_equal 1, klass.after_commands.size
+    # act
+    callbacks = klass._command_callbacks.map(&:kind)
+
+    # assert
+    assert_includes klass.identifiers, :tenant_identifier
+    assert_equal [:around], callbacks
   end
 
   def test_connect_sets_tenant_identifier_from_the_host
     # arrange
-    connection = @connection_class.new(request_for("alfa.app.test"))
+    connection = build_connection("alfa.app.test")
 
     # act
     connection.connect
 
     # assert
     assert_equal "alfa", connection.tenant_identifier
-    assert connection.connected
   end
 
   def test_connect_without_tenant_host_leaves_identifier_nil
     # arrange
-    connection = @connection_class.new(request_for("www.other.test"))
+    connection = build_connection("www.other.test")
 
     # act
     connection.connect
@@ -102,7 +82,7 @@ class ActionCableTest < TenancyTest
   def test_connect_uses_custom_resolver
     # arrange
     Lucid::Tenancy.configure { |config| config.resolver = ->(_request) { "alfa" } }
-    connection = @connection_class.new(request_for("whatever.test"))
+    connection = build_connection("whatever.test")
 
     # act
     connection.connect
@@ -111,14 +91,14 @@ class ActionCableTest < TenancyTest
     assert_equal "alfa", connection.tenant_identifier
   end
 
-  def test_command_runs_in_the_tenant_and_clears_it_afterwards
+  def test_tenant_is_active_during_the_command_and_restored_afterwards
     # arrange
-    connection = @connection_class.new(request_for("alfa.app.test"))
+    connection = build_connection("alfa.app.test")
     connection.connect
     seen = nil
 
     # act
-    connection.run_command { seen = [Lucid::Tenancy.current&.schema_name, current_schema] }
+    run_command(connection) { seen = [Lucid::Tenancy.current&.schema_name, current_schema] }
 
     # assert
     assert_equal [@alfa.schema_name, @alfa.schema_name], seen
@@ -126,29 +106,61 @@ class ActionCableTest < TenancyTest
     assert_equal "public", current_schema
   end
 
-  def test_command_clears_the_tenant_even_when_it_raises
+  def test_previous_tenant_is_restored_after_the_command
     # arrange
-    connection = @connection_class.new(request_for("alfa.app.test"))
+    connection = build_connection("alfa.app.test")
     connection.connect
+    Lucid::Tenancy.set(tenant: @beta)
 
     # act
-    assert_raises(RuntimeError) { connection.run_command { raise "boom" } }
+    run_command(connection) {}
 
     # assert
-    assert_nil Lucid::Tenancy.current
-    assert_equal "public", current_schema
+    assert_same @beta, Lucid::Tenancy.current
+    assert_equal @beta.schema_name, current_schema
   end
 
-  def test_command_without_tenant_identifier_stays_in_shared
+  def test_tenant_is_restored_even_when_the_command_raises
     # arrange
-    connection = @connection_class.new(request_for("www.other.test"))
+    connection = build_connection("alfa.app.test")
     connection.connect
+    Lucid::Tenancy.set(tenant: @beta)
+
+    # act
+    error = assert_raises(RuntimeError) { run_command(connection) { raise "boom" } }
+
+    # assert
+    assert_equal "boom", error.message
+    assert_same @beta, Lucid::Tenancy.current
+    assert_equal @beta.schema_name, current_schema
+  end
+
+  def test_command_without_identifier_runs_in_shared_even_if_the_worker_was_in_a_tenant
+    # arrange
+    connection = build_connection("www.other.test")
+    connection.connect
+    Lucid::Tenancy.set(tenant: @beta)
     seen = nil
 
     # act
-    connection.run_command { seen = [Lucid::Tenancy.current, current_schema] }
+    run_command(connection) { seen = [Lucid::Tenancy.current, current_schema] }
 
     # assert
     assert_equal [nil, "public"], seen
+    assert_same @beta, Lucid::Tenancy.current
+    assert_equal @beta.schema_name, current_schema
+  end
+
+  def test_command_payload_reaches_the_subscriptions
+    # arrange
+    connection = build_connection("alfa.app.test")
+    connection.connect
+    subscriptions = nil
+
+    # act
+    run_command(connection) { subscriptions = connection.subscriptions }
+
+    # assert
+    assert_equal [{ "command" => "message" }], subscriptions.payloads
   end
 end

@@ -41,7 +41,7 @@ module Lucid
       def release
         Lucid::Tenancy.set(tenant: nil)
       rescue StandardError => e
-        (defined?(Rails) && Rails.logger)&.warn("lucid-tenancy: could not release the tenant: #{e.message}")
+        (Rails.logger if defined?(Rails) && Rails.respond_to?(:logger))&.warn("lucid-tenancy: could not release the tenant: #{e.message}")
       end
 
       def shared_path?(path, prefixes)
