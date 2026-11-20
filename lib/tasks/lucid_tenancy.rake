@@ -3,17 +3,13 @@ namespace :lucid do
     desc "Migrates the shared schema, the template and every tenant"
     task migrate: "db:load_config" do
       Lucid::Tenancy::Migrator.migrate
-      Rake::Task["lucid:tenancy:dump"].invoke
-      dump_task = %w[db:schema:dump:primary db:schema:dump].find { |name| Rake::Task.task_defined?(name) }
-      Rake::Task[dump_task].invoke if dump_task
+      Lucid::Tenancy.dump_schemas if ActiveRecord.dump_schema_after_migration
     end
 
     desc "Rolls back STEP migrations (default 1) in every schema"
     task rollback: "db:load_config" do
       Lucid::Tenancy::Migrator.rollback(steps: ENV.fetch("STEP", 1).to_i)
-      Rake::Task["lucid:tenancy:dump"].invoke
-      dump_task = %w[db:schema:dump:primary db:schema:dump].find { |name| Rake::Task.task_defined?(name) }
-      Rake::Task[dump_task].invoke if dump_task
+      Lucid::Tenancy.dump_schemas if ActiveRecord.dump_schema_after_migration
     end
 
     desc "Lists pending migrations per schema"

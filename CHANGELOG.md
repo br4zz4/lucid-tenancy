@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- `db:migrate` and `db:rollback` write the schema dumps only when `ActiveRecord.dump_schema_after_migration` is on (`Lucid::Tenancy.dump_schemas`); in production the dumps were generated and thrown away, costing a lot of queries on a remote database.
+
 ## 0.2.0
 
 - Rubocop cop `Lucid/Tenancy/BlankLineAfterDeclaration` (`require: lucid/tenancy/rubocop`); rubocop stays out of the gem's dependencies.

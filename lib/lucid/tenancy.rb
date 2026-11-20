@@ -126,6 +126,14 @@ module Lucid
         pending(...).values.any?(&:any?)
       end
 
+      # Writes the template dump and the primary schema dump, the way +db:migrate+ and
+      # +db:rollback+ do when +config.active_record.dump_schema_after_migration+ is on.
+      def dump_schemas
+        Rake::Task["lucid:tenancy:dump"].invoke
+        dump_task = %w[db:schema:dump:primary db:schema:dump].find { |name| Rake::Task.task_defined?(name) }
+        Rake::Task[dump_task].invoke if dump_task
+      end
+
       # @return [Boolean] whether the schema of +tenant+ exists
       def provisioned?(tenant)
         Schema.exists?(tenant.schema_name)
