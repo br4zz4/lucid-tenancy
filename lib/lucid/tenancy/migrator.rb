@@ -33,14 +33,16 @@ module Lucid
         end
 
         # Rolls back the last +steps+ migrations, counted over all migrations in version order, each
-        # one in the schemas it belongs to.
-        def rollback(steps: 1, paths: default_paths)
+        # one in the schemas it belongs to. With +to+, rolls back every applied migration newer than
+        # that version instead (+to+ wins over +steps+): the way back to the schema of a release.
+        def rollback(steps: 1, to: nil, paths: default_paths)
           applied = {}
           each_scope(paths, name: true) do |context, schema|
             known = context.migrations.map(&:version)
             context.get_all_versions.each { |version| (applied[version] ||= []) << schema if known.include?(version) }
           end
-          applied.keys.sort.last(steps).reverse_each do |version|
+          versions = to ? applied.keys.select { |version| version > Integer(to) }.sort : applied.keys.sort.last(steps)
+          versions.reverse_each do |version|
             each_scope(paths) { |context, schema| context.run(:down, version) if applied[version].include?(schema) }
           end
         end

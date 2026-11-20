@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- `Migrator.rollback(to: version)` and `db:rollback VERSION=<n>` (also `lucid:tenancy:rollback`): roll back every applied migration newer than `version`, newest first, each in the schemas it belongs to. It is the way back to the schema of a release, which `STEP` could not express. `to:` wins over `steps:`; a non-numeric `VERSION` aborts.
+
 ## 0.2.2
 
 - Boot guard: refuses a primary database host that names a connection pooler (`-pooler`), because transaction-mode pooling loses the `search_path` and can serve another tenant's schema ([Connection pooling](docs/pooling.md)). `config.allow_pooled_connection` opts out. Fixes #1.

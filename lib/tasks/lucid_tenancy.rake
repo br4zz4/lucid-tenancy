@@ -6,9 +6,15 @@ namespace :lucid do
       Lucid::Tenancy.dump_schemas if ActiveRecord.dump_schema_after_migration
     end
 
-    desc "Rolls back STEP migrations (default 1) in every schema"
+    desc "Rolls back STEP migrations (default 1), or every migration newer than VERSION, in every schema"
     task rollback: "db:load_config" do
-      Lucid::Tenancy::Migrator.rollback(steps: ENV.fetch("STEP", 1).to_i)
+      if ENV["VERSION"]
+        abort "VERSION must be a number" unless ENV["VERSION"].match?(/\A\d+\z/)
+
+        Lucid::Tenancy::Migrator.rollback(to: ENV["VERSION"].to_i)
+      else
+        Lucid::Tenancy::Migrator.rollback(steps: ENV.fetch("STEP", 1).to_i)
+      end
       Lucid::Tenancy.dump_schemas if ActiveRecord.dump_schema_after_migration
     end
 
@@ -61,7 +67,7 @@ namespace :db do
     Rake::Task["lucid:tenancy:migrate"].invoke
   end
 
-  desc "Rolls back the last migration (STEP=n) in every schema"
+  desc "Rolls back the last migration (STEP=n) or everything newer than VERSION in every schema"
   task rollback: "db:load_config" do
     Rake::Task["lucid:tenancy:rollback"].invoke
   end
