@@ -17,6 +17,12 @@ module Lucid
         end
       end
 
+      config.after_initialize do
+        next if Rails.env.local?
+
+        Lucid::Tenancy::PooledConnectionGuard.check!
+      end
+
       rake_tasks do
         load File.expand_path("../../tasks/lucid_tenancy.rake", __dir__)
       end

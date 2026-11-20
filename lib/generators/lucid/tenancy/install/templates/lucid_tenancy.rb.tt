@@ -9,6 +9,7 @@ Lucid::Tenancy.configure do |config|
 
   # Identifiers resolved as "no tenant" (e.g. www), and whether hosts outside base_domain never resolve.
   # config.ignored_identifiers = %w[www]
+  # config.allow_pooled_connection = false
   # config.strict_base_domain = false
 
   # Paths served without a tenant (matched on a path boundary: "/up" does not match "/update").

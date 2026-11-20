@@ -25,4 +25,12 @@ class InstallGeneratorOptionsTest < Rails::Generators::TestCase
     # assert
     assert_file INITIALIZER, /^\s*#\s*config\.strict_base_domain = false/
   end
+
+  def test_initializer_lists_allow_pooled_connection_commented
+    # act
+    run_generator
+
+    # assert
+    assert_file INITIALIZER, /^\s*#\s*config\.allow_pooled_connection = false/
+  end
 end

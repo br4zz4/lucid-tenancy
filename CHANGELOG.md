@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Boot guard: refuses a primary database host that names a connection pooler (`-pooler`), because transaction-mode pooling loses the `search_path` and can serve another tenant's schema ([Connection pooling](docs/pooling.md)). `config.allow_pooled_connection` opts out. Fixes #1.
+
 ## 0.2.1
 
 - `db:migrate` and `db:rollback` write the schema dumps only when `ActiveRecord.dump_schema_after_migration` is on (`Lucid::Tenancy.dump_schemas`); in production the dumps were generated and thrown away, costing a lot of queries on a remote database.
