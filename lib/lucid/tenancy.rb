@@ -20,6 +20,7 @@ require "lucid/tenancy/migrator"
 require "lucid/tenancy/shared_only_migrations"
 require "lucid/tenancy/schema_dump"
 require "lucid/tenancy/resolver"
+require "lucid/tenancy/hosts"
 require "lucid/tenancy/middleware"
 require "lucid/tenancy/active_job_extension"
 require "lucid/tenancy/minitest"
@@ -113,6 +114,16 @@ module Lucid
         schema = tenant.respond_to?(:schema_name) ? tenant.schema_name : tenant.to_s
         Schema.ensure_migration_tables(schema, seed_from: Template.schema)
         schema
+      end
+
+      # @return [Hash{String => Array<Integer>}] pending migration versions per schema (see {Migrator.pending})
+      def pending(...)
+        Migrator.pending(...)
+      end
+
+      # @return [Boolean] whether any schema has a pending migration
+      def pending?(...)
+        pending(...).values.any?(&:any?)
       end
 
       # @return [Boolean] whether the schema of +tenant+ exists

@@ -36,6 +36,11 @@ module Lucid
         end
       end
 
+      # @return [String] the value of the identifying attribute (the subdomain by default)
+      def tenant_identifier
+        self[self.class.tenant_identifier]
+      end
+
       # @return [String] the schema of this tenant
       # @raise [Error::InvalidIdentifier, Error::ReservedIdentifier]
       def schema_name

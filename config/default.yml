@@ -1,0 +1,6 @@
+Lucid/Tenancy/BlankLineAfterDeclaration:
+  Description: Requires a blank line after the tenancy declaration of a migration.
+  Enabled: true
+  VersionAdded: "0.2"
+  Include:
+    - db/migrate/**/*.rb

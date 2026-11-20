@@ -8,10 +8,28 @@ module Lucid
 
       # @return [String, nil] the identifier, or +nil+ when the request names no tenant
       def identifier(request)
-        custom = Lucid::Tenancy.configuration.resolver
-        return custom.call(request) if custom
+        config = Lucid::Tenancy.configuration
+        return nil if outside_base_domain?(host(request))
 
-        subdomain(host(request))
+        found = config.resolver ? config.resolver.call(request) : subdomain(host(request))
+        ignored?(found) ? nil : found
+      end
+
+      # @api private
+      def outside_base_domain?(host)
+        config = Lucid::Tenancy.configuration
+        return false unless config.strict_base_domain && config.base_domain.present?
+
+        name = host.to_s.split(":").first.to_s.downcase
+        base = config.base_domain.downcase
+        name != base && !name.end_with?(".#{base}")
+      end
+
+      # @api private
+      def ignored?(identifier)
+        return false if identifier.blank?
+
+        Lucid::Tenancy.configuration.ignored_identifiers.map { |ignored| ignored.to_s.downcase }.include?(identifier.to_s.downcase)
       end
 
       # @return [String, nil] the part of +host+ before +config.base_domain+

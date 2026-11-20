@@ -33,6 +33,11 @@ module Lucid
       # @return [Array<String, Regexp>] identifiers that can never be a tenant, besides the built-in ones
       attr_accessor :reserved_identifiers
 
+      # @return [Array<String>] identifiers the resolver treats as "no tenant" (e.g. +["www"]+)
+      attr_accessor :ignored_identifiers
+      # @return [Boolean] when true and +base_domain+ is set, a host outside the base domain resolves to no tenant
+      attr_accessor :strict_base_domain
+
       def tenant_identifier=(attribute)
         @tenant_identifier_explicit = true
         @tenant_identifier = attribute.to_sym
@@ -53,6 +58,8 @@ module Lucid
         @template_schema = "tenancy_template"
         @shared_schema = "public"
         @reserved_identifiers = []
+        @ignored_identifiers = []
+        @strict_base_domain = false
         @base_domain = nil
         @resolver = nil
         @shared_paths = []

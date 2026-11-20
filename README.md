@@ -35,7 +35,7 @@ Inside `with`, `Student` reads and writes `alfa.students`. The job is enqueued w
 ## Installation
 
 ```ruby
-gem 'lucid-tenancy', github: 'br4zz4/lucid-tenancy', tag: 'v0.1.6'
+gem 'lucid-tenancy', github: 'br4zz4/lucid-tenancy', tag: 'v0.2.0'
 ```
 
 Ruby 3.2 or newer, Rails 7.2 or newer, PostgreSQL. Then:
@@ -61,6 +61,7 @@ Tenant identifiers become schema names, so they are validated, always quoted, an
 - [Migrations](docs/migrations.md)
 - [Provisioning](docs/provisioning.md)
 - [Middleware](docs/middleware.md)
+- [Hosts and URLs](docs/hosts.md)
 - [Jobs and Action Cable](docs/jobs.md)
 - [Testing](docs/testing.md)
 - [Configuration](docs/configuration.md)

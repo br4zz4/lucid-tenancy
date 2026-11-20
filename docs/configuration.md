@@ -22,6 +22,8 @@ end
 | `tenant_schema_path` | `db/tenant_schema.rb` | Dump loaded by `provision` and written by `lucid:tenancy:dump`. |
 | `after_provision` | `nil` | Callable run with the tenant, inside its schema, after provisioning. |
 | `base_domain` | `nil` | Domain whose subdomains are tenants. |
+| `ignored_identifiers` | `[]` | Identifiers the resolver treats as "no tenant", e.g. `["www"]`. |
+| `strict_base_domain` | `false` | With `base_domain` set, a host outside it resolves to no tenant, even with a custom `resolver`. |
 | `resolver` | `nil` | Callable `request -> identifier`. Replaces the subdomain rule. |
 | `shared_paths` | `[]` | Path prefixes served without a tenant, matched on a path boundary. |
 | `on_missing_tenant` | 404 Rack app | Rack app answering when the host names an unknown tenant. |

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- Rubocop cop `Lucid/Tenancy/BlankLineAfterDeclaration` (`require: lucid/tenancy/rubocop`); rubocop stays out of the gem's dependencies.
+- `Lucid::Tenancy.pending` and `Lucid::Tenancy.pending?`.
+- Config `ignored_identifiers` and `strict_base_domain`.
+- `db:migrate` and `db:rollback` dump only the primary database schema (`db:schema:dump:primary`) instead of every configured database.
+- `Lucid::Tenancy::Hosts.allowed` and `Hosts.url_options_for` ([Hosts and URLs](docs/hosts.md)); `Tenant#tenant_identifier`.
+
 ## 0.1.6
 
 - A freshly provisioned tenant now records every `tenancy :tenant` migration up to the dump's version in its `schema_migrations` (`Migrator.register_dumped_versions`); before, only the shared ones were recorded and the next `db:migrate` tried to re-run them.

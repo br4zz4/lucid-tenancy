@@ -48,6 +48,10 @@ bin/rails lucid:tenancy:dump
 
 Commit the file with the migration. `db/schema.rb` keeps describing the shared schema as usual.
 
+## Rubocop
+
+`require: lucid/tenancy/rubocop` in `.rubocop.yml` loads `Lucid/Tenancy/BlankLineAfterDeclaration`, which requires a blank line after `tenancy :tenant` / `tenancy :shared` and autocorrects it. Rubocop is not a dependency of the gem; the app must have it. When `db/**` is excluded from your main rubocop run, run rubocop a second time with a config that includes `db/migrate/**/*.rb` and enables only this cop.
+
 ## CI
 
 ```sh
@@ -57,5 +61,7 @@ bin/rails lucid:tenancy:check
 The task aborts with `db/tenant_schema.rb is out of date, run lucid:tenancy:dump` when the committed dump differs from the template schema. Run it after migrating in CI to catch a migration committed without its dump.
 
 ## db:prepare and pending checks
+
+`Lucid::Tenancy.pending` (alias of `Migrator.pending`) returns the pending versions per schema, and `Lucid::Tenancy.pending?` is true when any schema has one, e.g. to guard `db/seeds.rb`.
 
 `db:prepare` runs Rails' own preparation (every configured database) and then the tenant-aware migrator, so an existing database is brought up to date in every schema and a new one gets the shared schema plus the template and tenants. Rails' `check_all_pending!` and `maintain_test_schema!` only see `tenancy :shared` migrations; check tenants with `rake lucid:tenancy:status`.
