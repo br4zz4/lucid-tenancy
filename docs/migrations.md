@@ -29,6 +29,7 @@ Write the body as if there were one schema. The gem puts the right schema on the
 ```sh
 bin/rails db:migrate
 bin/rails db:rollback          # STEP=n for more
+bin/rails db:rollback VERSION=20260101000000   # everything newer than that version
 bin/rails lucid:tenancy:status
 ```
 
@@ -36,7 +37,7 @@ bin/rails lucid:tenancy:status
 
 `lucid:tenancy:status` prints the pending versions for each schema, or `up to date`.
 
-Rollback undoes the last `STEP` migrations of each kind in every schema.
+Rollback undoes the last `STEP` migrations of each kind in every schema. With `VERSION=<n>` it undoes every applied migration newer than `n`, newest first, each in the schemas it belongs to: that is the way back to the schema of a release (`Migrator.rollback(to: n)`). `VERSION` wins over `STEP`, and it must be a number.
 
 ## The dump
 
