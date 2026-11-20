@@ -290,29 +290,29 @@ Repo luneta (após a tag): 1. #<B1> gem e configuração · 2. #<B2> runtime e j
 # definition of done
 
 - [ ] Todo cenário de "acceptance criteria" foi validado (automatizado ou verificado com comando exato)
-- [ ] Testes automáticos passando — suíte verde, não só a parte nova (`bundle exec rake test` na gem; `make core.check` no luneta)
+- [x] Testes automáticos passando — suíte verde, não só a parte nova (`bundle exec rake test` na gem; `make core.check` no luneta)
 - [ ] Toda task do "how" executada
 - [ ] Documentação atualizada (ver "documentation")
-- [ ] Staging: `staging: none` declarado
+- [x] Staging: `staging: none` declarado
 - [ ] Cada PR da sequência validado isoladamente (build e testes verdes sem os PRs seguintes)
-- [ ] Último PR liga a funcionalidade e remove código temporário (`Hotel` e afins removidos)
+- [x] Último PR liga a funcionalidade e remove código temporário (`Hotel` e afins removidos)
 - [ ] CI da gem verde em ubuntu 3.2, ubuntu 3.4 e macOS 3.4 com PostgreSQL
-- [ ] Tag `v0.1.0` publicada em `br4zz4/lucid-tenancy` e consumida pelo luneta
-- [ ] Troca de tenant: bloco, exceção, sem bloco, shared, tabelas compartilhadas (`switching_test.rb`, `model_test.rb`)
-- [ ] Enumerable: `each`, `map`, `find`, `count` sem troca, restauração (`collection_test.rb`)
-- [ ] Configuração por initializer e por concern, conflito levanta erro (`tenant_test.rb`, `configuration_test.rb`)
-- [ ] Identificador: normalização, citação, reservados, inválidos (`identifier_test.rb`)
-- [ ] Provisionamento completo e transacional, duplicado recusado (`provisioning_test.rb`)
-- [ ] Migrations de tenant rodam em cada tenant e no template, shared uma vez, sem declaração falha, rollback, nunca apaga schema (`migrator_test.rb`)
-- [ ] Dump do template e verificação de sincronia (`schema_dump_test.rb`)
-- [ ] Middleware: resolução, limpeza (inclusive streaming), tenant ausente, fronteira de caminho, proxies (`middleware_test.rb`, `resolver_test.rb`)
-- [ ] Active Job leva o tenant; job `shared`; Action Cable e helpers de teste (`active_job_test.rb`, `action_cable_test.rb`, `test_helpers_test.rb`)
-- [ ] Documentação da gem completa: todos os arquivos da seção "Documentação da gem" existem
-- [ ] `grep -rn "Hotel\b\|HotelTenancy\|TenantMiddleware\|TenantMigrationContext" modules/core/code/app modules/core/code/lib modules/core/code/config modules/core/code/spec` vazio
-- [ ] Jobs de tenant rodam na escola certa (specs dos dois jobs)
-- [ ] Migration nova chega a todas as escolas existentes (`tenancy_migrations_spec.rb`)
-- [ ] Criar escola provisiona schema completo e subdomínios perigosos são recusados (`organization/create_spec.rb`)
-- [ ] Rotas do luneta seguem como hoje (`/up`, `/p`, `/tasks`, `/sysadmin`, `www`, 404) e a suíte inteira está verde
+- [x] Tag publicada em `br4zz4/lucid-tenancy` (v0.1.0 a v0.1.2; o luneta consome a v0.1.2)
+- [x] Troca de tenant: bloco, exceção, sem bloco, shared, tabelas compartilhadas (`switching_test.rb`, `model_test.rb`)
+- [x] Enumerable: `each`, `map`, `find`, `count` sem troca, restauração (`collection_test.rb`)
+- [x] Configuração por initializer e por concern, conflito levanta erro (`tenant_test.rb`, `configuration_test.rb`)
+- [x] Identificador: normalização, citação, reservados, inválidos (`identifier_test.rb`)
+- [x] Provisionamento completo e transacional, duplicado recusado (`provisioning_test.rb`)
+- [x] Migrations de tenant rodam em cada tenant e no template, shared uma vez, sem declaração falha, rollback, nunca apaga schema (`migrator_test.rb`)
+- [x] Dump do template e verificação de sincronia (`schema_dump_test.rb`)
+- [x] Middleware: resolução, limpeza (inclusive streaming), tenant ausente, fronteira de caminho, proxies (`middleware_test.rb`, `resolver_test.rb`)
+- [x] Active Job leva o tenant; job `shared`; Action Cable e helpers de teste (`active_job_test.rb`, `action_cable_test.rb`, `test_helpers_test.rb`)
+- [x] Documentação da gem completa: todos os arquivos da seção "Documentação da gem" existem
+- [x] `grep -rn "Hotel\b\|HotelTenancy\|TenantMiddleware\|TenantMigrationContext" modules/core/code/app modules/core/code/lib modules/core/code/config modules/core/code/spec` vazio
+- [x] Jobs de tenant rodam na escola certa (specs dos dois jobs)
+- [x] Migration nova chega a todas as escolas existentes (`tenancy_migrations_spec.rb`)
+- [x] Criar escola provisiona schema completo e subdomínios perigosos são recusados (`organization/create_spec.rb`)
+- [x] Rotas do luneta seguem como hoje (`/up`, `/p`, `/tasks`, `/sysadmin`, `www`, 404) e a suíte inteira está verde
 
 ## documentation
 
