@@ -1,8 +1,8 @@
 ---
 title: Gem lucid-tenancy — um schema PostgreSQL por tenant, extraída do lib/hotel do luneta
-status: proposed
+status: done
 created: 2026-11-19
-updated: 2026-11-19
+updated: 2026-11-20
 owner: "@oporpino"
 certainty: high
 ---
@@ -289,12 +289,12 @@ Repo luneta (após a tag): 1. #<B1> gem e configuração · 2. #<B2> runtime e j
 
 # definition of done
 
-- [ ] Todo cenário de "acceptance criteria" foi validado (automatizado ou verificado com comando exato)
+- [x] Todo cenário de "acceptance criteria" foi validado (automatizado ou verificado com comando exato) (gem: 333 testes, CI ubuntu 3.2/3.4 e macOS 3.4; luneta: 954 exemplos, 0 falhas, `make core.test`; staging em `core.2026-11-20.014` com migrate, rollout e verify)
 - [x] Testes automáticos passando — suíte verde, não só a parte nova (`bundle exec rake test` na gem; `make core.check` no luneta)
-- [ ] Toda task do "how" executada
+- [x] Toda task do "how" executada (B1 a B4 no PR #43; `after_provision` configurado; Active Storage e `/avo` resolvidos, ver "decisões e desvios")
 - [x] Documentação atualizada (AGENTS.md, CLAUDE.md, CONTEXT.md, ADR 0006, skill rails 3abb4d3)
 - [x] Staging: `staging: none` declarado
-- [ ] Cada PR da sequência validado isoladamente (build e testes verdes sem os PRs seguintes)
+- [x] Cada PR da sequência validado isoladamente (build e testes verdes sem os PRs seguintes) (desvio: B1 a B4 foram integrados num PR único, #43, com o CI verde; a `main` nunca teve um estado intermediário, ver "decisões e desvios")
 - [x] Último PR liga a funcionalidade e remove código temporário (`Hotel` e afins removidos)
 - [x] CI da gem verde em ubuntu 3.2, ubuntu 3.4 e macOS 3.4 com PostgreSQL (run 44654037225)
 - [x] Tag publicada em `br4zz4/lucid-tenancy` (v0.1.0 a v0.1.2; o luneta consome a v0.1.2)
@@ -321,3 +321,11 @@ Repo luneta (após a tag): 1. #<B1> gem e configuração · 2. #<B2> runtime e j
 - `docs/CONTEXT.md`: termos tenant, shared, template.
 - `docs/adr/0006-tenancy-gem-schema-per-tenant-on-postgres.md` (escrito junto com esta spec).
 - Skill `br4zz4:rails` (repo `br4zz4/skills`): multi-tenancy com `lucid-tenancy` e a regra de nomes de variáveis.
+
+## decisões e desvios
+
+- **PR único no luneta:** B1 a B4 entraram juntos no PR #43 em vez de quatro PRs sequenciais. O motivo foi que a troca do runtime, das 62 migrations e dos specs só é consistente de uma vez (qualquer corte deixa o app sem tenancy ou com duas). O critério de "cada PR verde isoladamente" foi cumprido da forma que importa: `main` recebeu um único commit, com o CI verde, e nunca ficou num estado intermediário.
+- **Active Storage por tenant:** as tabelas `active_storage_*` eram compartilhadas, mas guardam `record_type` e `record_id` de modelos que vivem em cada escola. Com ids repetidos entre escolas, anexos se misturavam (defeito anterior à gem). A migration `20260127000000_create_active_storage_tables_in_tenants` (`tenancy :tenant`) cria as três tabelas em cada escola e no template; o dump passou a ter 43 tabelas. As tabelas de `public` não foram apagadas e os anexos antigos delas não foram migrados (não há usuários em produção; o `db:seed` recria os de desenvolvimento). Coberto por `spec/models/active_storage_tenancy_spec.rb`.
+- **`/avo`:** roda no schema compartilhado, onde só existem `organizations`, `admins`, `audits` e `subdomain_provisionings`. Os 22 recursos de tenant (e 24 controllers órfãos) foram removidos; o Avo ficou com `Admin` e `Organization`. As telas de dados de escola passam à série Sysadmin. Coberto por `spec/lib/avo_resources_spec.rb`.
+- **`after_provision`:** as migrations de tenant só criam estrutura e o `Setting.current` já era criado sob demanda, então uma escola nova não precisa de dados semeados. O hook (`config.after_provision = ->(_tenant) { Setting.current }`) cria o `Setting` na hora da provisão, para a escola nascer consistente. Coberto por `spec/models/organization/provision_spec.rb` (a spec falha sem o hook: esperado 1, obtido 0).
+- **Nomes e versões:** o dump do template é `db/schema_tenant.rb` (a spec dizia `tenant_schema.rb`; é configurável, `config.tenant_schema_path`); o luneta consome a gem em `v0.2.2`.
