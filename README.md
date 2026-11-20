@@ -35,7 +35,7 @@ Inside `with`, `Student` reads and writes `alfa.students`. The job is enqueued w
 ## Installation
 
 ```ruby
-gem 'lucid-tenancy', github: 'br4zz4/lucid-tenancy', tag: 'v0.1.5'
+gem 'lucid-tenancy', github: 'br4zz4/lucid-tenancy', tag: 'v0.1.6'
 ```
 
 Ruby 3.2 or newer, Rails 7.2 or newer, PostgreSQL. Then:

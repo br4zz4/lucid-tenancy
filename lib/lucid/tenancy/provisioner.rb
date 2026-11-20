@@ -17,7 +17,10 @@ module Lucid
         Schema.connection.transaction(requires_new: true) do
           Schema.create(schema)
           Schema.ensure_migration_tables(schema)
-          Schema.with_path(schema) { load_dump(dump) }
+          Schema.with_path(schema) do
+            load_dump(dump)
+            Migrator.register_dumped_versions
+          end
         end
 
         hook = Lucid::Tenancy.configuration.after_provision

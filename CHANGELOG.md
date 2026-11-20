@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.6
+
+- A freshly provisioned tenant now records every `tenancy :tenant` migration up to the dump's version in its `schema_migrations` (`Migrator.register_dumped_versions`); before, only the shared ones were recorded and the next `db:migrate` tried to re-run them.
+
 ## 0.1.5
 
 - Switching the `search_path` now clears the Active Record query cache, so the same SQL in another tenant is never answered from the previous tenant's cached result (requests, jobs and `rails runner` run with the query cache on).

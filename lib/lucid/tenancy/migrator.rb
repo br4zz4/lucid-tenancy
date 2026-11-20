@@ -55,6 +55,20 @@ module Lucid
           result
         end
 
+        # Records in the current schema every +tenancy :tenant+ migration up to the version of the
+        # dump that was just loaded. Rails' own +assume_migrated_upto_version+ only sees the
+        # +tenancy :shared+ migrations (see SharedOnlyMigrations), so it would leave the tenant ones out.
+        def register_dumped_versions(paths: default_paths)
+          scoped = context(paths, :tenant, ActiveRecord::Base.connection_pool)
+          done = scoped.get_all_versions
+          dumped = done.max
+          return unless dumped
+
+          scoped.migrations.map(&:version).each do |version|
+            scoped.schema_migration.create_version(version) if version <= dumped && !done.include?(version)
+          end
+        end
+
         def default_paths
           ActiveRecord::Base.connection_pool.migrations_paths
         end
