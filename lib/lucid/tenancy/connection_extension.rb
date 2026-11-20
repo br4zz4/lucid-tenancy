@@ -8,6 +8,7 @@ module Lucid
       def lucid_tenancy_apply(search_path)
         @lucid_tenancy_applied = true
         self.schema_search_path = search_path
+        clear_query_cache
       end
 
       # @api private
@@ -16,6 +17,7 @@ module Lucid
 
         @lucid_tenancy_applied = false
         self.schema_search_path = quote_schema_name(Lucid::Tenancy.configuration.shared_schema)
+        clear_query_cache
       end
 
       # @api private

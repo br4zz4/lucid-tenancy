@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5
+
+- Switching the `search_path` now clears the Active Record query cache, so the same SQL in another tenant is never answered from the previous tenant's cached result (requests, jobs and `rails runner` run with the query cache on).
+
 ## 0.1.4
 
 - Fixed `ConnectionNotDefined` during `db:schema:dump`: the primary pool check no longer needs a connected `ActiveRecord::Base` (`Lucid::Tenancy.primary_db_name`).
