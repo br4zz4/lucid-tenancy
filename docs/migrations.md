@@ -66,3 +66,19 @@ The task aborts with `db/tenant_schema.rb is out of date, run lucid:tenancy:dump
 `Lucid::Tenancy.pending` (alias of `Migrator.pending`) returns the pending versions per schema, and `Lucid::Tenancy.pending?` is true when any schema has one, e.g. to guard `db/seeds.rb`.
 
 `db:prepare` runs Rails' own preparation (every configured database) and then the tenant-aware migrator, so an existing database is brought up to date in every schema and a new one gets the shared schema plus the template and tenants. Rails' `check_all_pending!` and `maintain_test_schema!` only see `tenancy :shared` migrations; check tenants with `rake lucid:tenancy:status`.
+
+## Per-tenant health and migrate
+
+```ruby
+health = Lucid::Tenancy.health(school)
+health.ok?              # false when anything below is not empty
+health.missing_tables   # in the template, not in the tenant
+health.extra_tables     # in the tenant, not in the template
+health.column_drift     # [ColumnDrift(table:, column:, expected:, actual:)]
+health.pending_versions # tenancy :tenant migrations not yet run there
+
+Lucid::Tenancy.pending(tenant: school) # => [20261101000000]
+Lucid::Tenancy.migrate(school)         # only that tenant schema
+```
+
+`health` compares tables, columns and column types, reads only the catalog, and never changes anything. A tenant whose schema does not exist is `provisioned? == false`. `migrate` runs `tenancy :tenant` migrations only, leaves the template, the other tenants and the shared schema alone, and raises `Error::NotProvisioned` for a missing schema.
