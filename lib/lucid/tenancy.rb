@@ -17,6 +17,7 @@ require "lucid/tenancy/provisioner"
 require "lucid/tenancy/collection"
 require "lucid/tenancy/migration"
 require "lucid/tenancy/migrator"
+require "lucid/tenancy/health"
 require "lucid/tenancy/shared_only_migrations"
 require "lucid/tenancy/schema_dump"
 require "lucid/tenancy/resolver"
@@ -117,14 +118,32 @@ module Lucid
         schema
       end
 
-      # @return [Hash{String => Array<Integer>}] pending migration versions per schema (see {Migrator.pending})
-      def pending(...)
-        Migrator.pending(...)
+      # @param tenant [#schema_name, String, Symbol, nil] when given, only that tenant is looked at
+      # @return [Hash{String => Array<Integer>}, Array<Integer>] pending migration versions per schema
+      #   (see {Migrator.pending}), or the pending versions of +tenant+
+      def pending(tenant: nil, **options)
+        return Migrator.pending(**options) unless tenant
+
+        Migrator.pending(schema: resolve(tenant).schema_name, **options)
       end
 
       # @return [Boolean] whether any schema has a pending migration
       def pending?(...)
         pending(...).values.any?(&:any?)
+      end
+
+      # How far the schema of +tenant+ is from the template. Reads the catalog only.
+      #
+      # @return [Health]
+      def health(tenant, paths: Migrator.default_paths)
+        Health.inspect_schema(resolve(tenant).schema_name, paths: paths)
+      end
+
+      # Runs the pending +tenancy :tenant+ migrations in the schema of +tenant+ and nowhere else.
+      #
+      # @raise [Error::NotProvisioned] the schema of the tenant does not exist
+      def migrate(tenant, paths: Migrator.default_paths)
+        Migrator.migrate_tenant(resolve(tenant).schema_name, paths: paths)
       end
 
       # Writes the template dump and the primary schema dump, the way +db:migrate+ and

@@ -23,6 +23,9 @@ module Lucid
       # The database connection goes through a transaction-mode pooler, which loses the +search_path+.
       class PooledConnection < Error; end
 
+      # The schema of a tenant does not exist yet; provision it before migrating it.
+      class NotProvisioned < Error; end
+
       # The tenant model was declared twice with different settings.
       class ConfigurationConflict < Error; end
     end
