@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- `Lucid::Tenancy.health(tenant)` returns a `Health` of the tenant schema against the template: `provisioned?`, `missing_tables`, `extra_tables`, `column_drift` (table, column, expected and actual type), `pending_versions` and `ok?`. It reads the catalog only.
+- `Lucid::Tenancy.migrate(tenant)` runs the pending `tenancy :tenant` migrations in that one tenant schema; `Error::NotProvisioned` when the schema does not exist.
+- `Lucid::Tenancy.pending(tenant:)` returns the pending versions of one tenant; without `tenant:` it still returns the Hash per schema.
+
+Upgrading from 0.3.0: bump the tag and `bundle install`. Nothing changes until you call the new methods.
+
 ## 0.3.0
 
 - `Migrator.rollback(to: version)` and `db:rollback VERSION=<n>` (also `lucid:tenancy:rollback`): roll back every applied migration newer than `version`, newest first, each in the schemas it belongs to. It is the way back to the schema of a release, which `STEP` could not express. `to:` wins over `steps:`; a non-numeric `VERSION` aborts.
