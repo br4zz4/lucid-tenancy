@@ -47,8 +47,21 @@ module Lucid
           end
         end
 
-        # @return [Hash{String => Array<Integer>}] pending versions per schema
-        def pending(paths: default_paths)
+        # Runs the pending +tenancy :tenant+ migrations in the schema of one tenant, and nowhere else.
+        #
+        # @raise [Error::NotProvisioned] the tenant schema does not exist
+        def migrate_tenant(schema, paths: default_paths)
+          raise Error::NotProvisioned, "schema #{schema.inspect} does not exist" unless Schema.exists?(schema)
+
+          ensure_tables(schema)
+          Schema.with_path(schema) { context(paths, :tenant, ActiveRecord::Base.connection_pool).migrate(nil) }
+        end
+
+        # @return [Hash{String => Array<Integer>}, Array<Integer>] pending versions per schema, or, with
+        #   +schema+, the pending +tenancy :tenant+ versions of that one schema (empty when it does not exist)
+        def pending(paths: default_paths, schema: nil)
+          return pending_in(schema, paths) if schema
+
           result = {}
           each_scope(paths, name: true) do |context, schema|
             done = context.get_all_versions
@@ -76,6 +89,16 @@ module Lucid
         end
 
         private
+
+        def pending_in(schema, paths)
+          return [] unless Schema.exists?(schema)
+
+          Schema.with_path(schema) do
+            scoped = context(paths, :tenant, ActiveRecord::Base.connection_pool)
+            done = Schema.migration_tables?(schema) ? scoped.get_all_versions : []
+            scoped.migrations.map(&:version).reject { |version| done.include?(version) }
+          end
+        end
 
         def each_scope(paths, name: false)
           pool = ActiveRecord::Base.connection_pool
